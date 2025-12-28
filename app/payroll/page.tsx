@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import MobileNav from '../components/MobileNav'
+import { useAuth } from '../components/AuthProvider'
+import { formatINR } from '@/lib/formatters'
 
 interface Account {
   id: number
@@ -32,6 +34,19 @@ interface Transaction {
   accountId?: number
 }
 
+interface Advance {
+  id: number
+  employeeId: number
+  amount: number
+  reason: string | null
+  date: string
+  employee: {
+    id: number
+    name: string
+    status: string
+  }
+}
+
 interface PayrollRecord {
   employeeId: number
   employeeName: string
@@ -48,7 +63,7 @@ export default function Payroll() {
   const [accounts, setAccounts] = useState<Account[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
   const [attendance, setAttendance] = useState<Attendance[]>([])
-  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [advances, setAdvances] = useState<Advance[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [saveSuccess, setSaveSuccess] = useState(false)
@@ -104,11 +119,11 @@ export default function Payroll() {
           setAttendance(attData)
         }
         
-        // Fetch transactions (for advances)
-        const txnRes = await fetch('/api/transactions')
-        if (txnRes.ok) {
-          const txnData = await txnRes.json()
-          setTransactions(txnData)
+        // Fetch advances
+        const advRes = await fetch('/api/advances')
+        if (advRes.ok) {
+          const advData = await advRes.json()
+          setAdvances(advData)
         }
       } catch (err) {
         console.error('Error fetching data:', err)
@@ -128,27 +143,17 @@ export default function Payroll() {
     const start = new Date(startDate)
     const end = new Date(endDate)
     
-    // Group transactions by employee and account
-    const advancesByEmployeeAccount = new Map<string, number>()
+    // Calculate advances by employee for the selected period
+    const advancesByEmployee = new Map<number, number>()
     
-    transactions.forEach(txn => {
-      if (txn.category === 'Salary Advance' &&
-          new Date(txn.date) >= start &&
-          new Date(txn.date) <= end) {
-        
-        employees.forEach(emp => {
-          if (txn.description?.toLowerCase().includes(emp.name.toLowerCase())) {
-            const key = `${emp.id}-${txn.accountId || 0}`
-            advancesByEmployeeAccount.set(key, (advancesByEmployeeAccount.get(key) || 0) + txn.amount)
-          }
-        })
+    advances.forEach(adv => {
+      const advDate = new Date(adv.date)
+      if (advDate >= start && advDate <= end) {
+        advancesByEmployee.set(
+          adv.employeeId,
+          (advancesByEmployee.get(adv.employeeId) || 0) + adv.amount
+        )
       }
-    })
-    
-    // Get unique accounts from transactions
-    const accountsInTransactions = new Set<number>()
-    transactions.forEach(txn => {
-      if (txn.accountId) accountsInTransactions.add(txn.accountId)
     })
     
     // Create payroll records for each employee-account combination
@@ -168,46 +173,24 @@ export default function Payroll() {
       const dailyRate = employee.salary || 0
       const grossPay = dailyRate * daysWorked
       
-      // If employee has transactions, create records per account
-      const employeeAccounts = Array.from(accountsInTransactions).filter(accId => {
-        const key = `${employee.id}-${accId}`
-        return advancesByEmployeeAccount.has(key)
-      })
+      // Get advances for this employee in the period
+      const employeeAdvances = advancesByEmployee.get(employee.id) || 0
+      const netPay = grossPay - employeeAdvances
       
-      if (employeeAccounts.length > 0) {
-        employeeAccounts.forEach(accId => {
-          const account = accounts.find(a => a.id === accId)
-          const key = `${employee.id}-${accId}`
-          const advances = advancesByEmployeeAccount.get(key) || 0
-          const netPay = grossPay - advances
-          
-          records.push({
-            employeeId: employee.id,
-            employeeName: employee.name,
-            accountId: accId,
-            accountName: account?.name || 'Unknown',
-            daysWorked,
-            dailyRate,
-            grossPay,
-            advances,
-            netPay
-          })
-        })
-      } else {
-        // If no transactions, show with first account or "No Account"
-        const defaultAccount = accounts[0]
-        records.push({
-          employeeId: employee.id,
-          employeeName: employee.name,
-          accountId: defaultAccount?.id || 0,
-          accountName: defaultAccount?.name || 'No Account',
-          daysWorked,
-          dailyRate,
-          grossPay,
-          advances: 0,
-          netPay: grossPay
-        })
-      }
+      // Use first account as default (can be changed later if needed)
+      const defaultAccount = accounts[0]
+      
+      records.push({
+        employeeId: employee.id,
+        employeeName: employee.name,
+        accountId: defaultAccount?.id || 0,
+        accountName: defaultAccount?.name || 'No Account',
+        daysWorked,
+        dailyRate,
+        grossPay,
+        advances: employeeAdvances,
+        netPay
+      })
     })
     
     // Filter by selected account if not "All"
@@ -449,10 +432,10 @@ export default function Payroll() {
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{record.employeeName}</td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{record.accountName}</td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{record.daysWorked}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Rs {record.dailyRate.toFixed(2)}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Rs {record.grossPay.toFixed(2)}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-orange-600">Rs {record.advances.toFixed(2)}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-blue-600">Rs {record.netPay.toFixed(2)}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatINR(record.dailyRate)}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatINR(record.grossPay)}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-orange-600">{formatINR(record.advances)}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-blue-600">{formatINR(record.netPay)}</td>
                           </tr>
                         ))
                       )}
@@ -462,9 +445,9 @@ export default function Payroll() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900" colSpan={2}>TOTAL</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">{totals.daysWorked}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">-</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">Rs {totals.grossPay.toFixed(2)}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-orange-600">Rs {totals.advances.toFixed(2)}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-blue-600">Rs {totals.netPay.toFixed(2)}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">{formatINR(totals.grossPay)}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-orange-600">{formatINR(totals.advances)}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-blue-600">{formatINR(totals.netPay)}</td>
                       </tr>
                     </tfoot>
                   </table>

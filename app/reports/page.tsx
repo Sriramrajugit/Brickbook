@@ -2,6 +2,11 @@
 
 import { useState, useEffect } from 'react'
 import MobileNav from '../components/MobileNav'
+import { useAuth } from '../components/AuthProvider'
+import { formatINR } from '@/lib/formatters'
+import * as XLSX from 'xlsx'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
 
 interface Account {
   id: number
@@ -50,10 +55,11 @@ export default function Reports() {
         }
 
         // Fetch transactions
-        const transactionsRes = await fetch('/api/transactions')
+        const transactionsRes = await fetch('/api/transactions?limit=1000')
         if (transactionsRes.ok) {
-          const transactionsData = await transactionsRes.json()
-          setTransactions(transactionsData)
+          const transactionsResult = await transactionsRes.json()
+          // API now returns { data: [...], pagination: {...} }
+          setTransactions(transactionsResult.data || [])
         } else {
           // Fallback to sample data if API fails
           setTransactions([
@@ -102,11 +108,11 @@ export default function Reports() {
 
   // Calculate totals from filtered transactions
   const totalIncome = filteredTransactions
-    .filter(t => t.type === 'Income')
+    .filter(t => t.type === 'Cash-in' || t.type === 'Cash-In')
     .reduce((sum, t) => sum + t.amount, 0)
 
   const totalExpenses = filteredTransactions
-    .filter(t => t.type === 'Expense')
+    .filter(t => t.type === 'Cash-out' || t.type === 'Cash-Out')
     .reduce((sum, t) => sum + t.amount, 0)
 
   const netBalance = totalIncome - totalExpenses
@@ -116,9 +122,9 @@ export default function Reports() {
     if (!acc[transaction.category]) {
       acc[transaction.category] = { income: 0, expense: 0 }
     }
-    if (transaction.type === 'Income') {
+    if (transaction.type === 'Cash-in' || transaction.type === 'Cash-In') {
       acc[transaction.category].income += transaction.amount
-    } else {
+    } else if (transaction.type === 'Cash-out' || transaction.type === 'Cash-Out') {
       acc[transaction.category].expense += transaction.amount
     }
     return acc
@@ -126,6 +132,97 @@ export default function Reports() {
 
   // Get unique categories from actual data
   const categories = ['All', ...new Set(transactions.map(t => t.category))]
+
+  // Download as Excel
+  const downloadExcel = () => {
+    // Prepare data for Excel
+    const excelData = filteredTransactions.map(t => ({
+      'Date': new Date(t.date).toLocaleDateString('en-IN'),
+      'Account': t.account?.name || (accounts.find(a => a.id === t.accountId)?.name || '-'),
+      'Description': t.description || '-',
+      'Category': t.category,
+      'Type': t.type,
+      'Amount': t.amount
+    }))
+
+    // Add summary rows
+    const summaryData = [
+      {},
+      { 'Date': 'SUMMARY', 'Account': '', 'Description': '', 'Category': '', 'Type': '', 'Amount': '' },
+      { 'Date': 'Total Income', 'Account': '', 'Description': '', 'Category': '', 'Type': '', 'Amount': totalIncome },
+      { 'Date': 'Total Expenses', 'Account': '', 'Description': '', 'Category': '', 'Type': '', 'Amount': totalExpenses },
+      { 'Date': 'Net Balance', 'Account': '', 'Description': '', 'Category': '', 'Type': '', 'Amount': netBalance }
+    ]
+
+    const finalData = [...excelData, ...summaryData]
+
+    // Create workbook and worksheet
+    const ws = XLSX.utils.json_to_sheet(finalData)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Transactions Report')
+
+    // Generate filename with date range
+    const filename = `Transactions_Report_${startDate || 'all'}_to_${endDate || 'all'}.xlsx`
+    
+    // Download
+    XLSX.writeFile(wb, filename)
+  }
+
+  // Download as PDF
+  const downloadPDF = () => {
+    const doc = new jsPDF()
+    
+    // Title
+    doc.setFontSize(18)
+    doc.text('Transactions Report', 14, 20)
+    
+    // Report info
+    doc.setFontSize(10)
+    doc.text(`Generated: ${new Date().toLocaleDateString('en-IN')}`, 14, 30)
+    if (startDate || endDate) {
+      doc.text(`Period: ${startDate || 'Start'} to ${endDate || 'End'}`, 14, 36)
+    }
+    if (selectedCategory !== 'All') {
+      doc.text(`Category: ${selectedCategory}`, 14, 42)
+    }
+    if (selectedAccount !== 'All') {
+      const account = accounts.find(a => a.id === Number(selectedAccount))
+      doc.text(`Account: ${account?.name || '-'}`, 14, 48)
+    }
+
+    // Summary section
+    const summaryY = (selectedCategory !== 'All' || selectedAccount !== 'All') ? 56 : 50
+    doc.setFontSize(12)
+    doc.text('Summary', 14, summaryY)
+    
+    doc.setFontSize(10)
+    doc.text(`Total Income: ${formatINR(totalIncome)}`, 14, summaryY + 6)
+    doc.text(`Total Expenses: ${formatINR(totalExpenses)}`, 14, summaryY + 12)
+    doc.text(`Net Balance: ${formatINR(netBalance)}`, 14, summaryY + 18)
+
+    // Transactions table
+    const tableData = filteredTransactions.map(t => [
+      new Date(t.date).toLocaleDateString('en-IN'),
+      t.account?.name || (accounts.find(a => a.id === t.accountId)?.name || '-'),
+      t.description || '-',
+      t.category,
+      t.type,
+      formatINR(t.amount)
+    ])
+
+    autoTable(doc, {
+      head: [['Date', 'Account', 'Description', 'Category', 'Type', 'Amount']],
+      body: tableData,
+      startY: summaryY + 26,
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [59, 130, 246] },
+      margin: { top: 10 }
+    })
+
+    // Save PDF
+    const filename = `Transactions_Report_${startDate || 'all'}_to_${endDate || 'all'}.pdf`
+    doc.save(filename)
+  }
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col lg:flex-row">
@@ -201,7 +298,7 @@ export default function Reports() {
                     </select>
                   </div>
                 </div>
-                <div className="mt-4 flex gap-2">
+                <div className="mt-4 flex flex-wrap gap-2">
                   <button
                     onClick={() => {
                       setStartDate('')
@@ -213,7 +310,25 @@ export default function Reports() {
                   >
                     Clear Filters
                   </button>
-                  <span className="text-sm text-gray-600 self-center">
+                  <button
+                    onClick={downloadExcel}
+                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center gap-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Download Excel
+                  </button>
+                  <button
+                    onClick={downloadPDF}
+                    className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 flex items-center gap-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                    </svg>
+                    Download PDF
+                  </button>
+                  <span className="text-sm text-gray-600 self-center ml-auto">
                     Showing {filteredTransactions.length} transactions
                   </span>
                 </div>
@@ -224,17 +339,17 @@ export default function Reports() {
                 <h3 className="text-lg font-medium text-gray-900 mb-4">Report Summary</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <p className="text-sm text-gray-600">Total Income</p>
-                    <p className="text-2xl font-bold text-green-600">Rs {totalIncome.toFixed(2)}</p>
+                    <p className="text-sm text-gray-600">Total Cash in</p>
+                    <p className="text-2xl font-bold text-green-600">{formatINR(totalIncome)}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600">Total Expenses</p>
-                    <p className="text-2xl font-bold text-red-600">Rs {totalExpenses.toFixed(2)}</p>
+                    <p className="text-sm text-gray-600">Total Cash-out</p>
+                    <p className="text-2xl font-bold text-red-600">{formatINR(totalExpenses)}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Net Balance</p>
                     <p className={`text-2xl font-bold ${netBalance >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
-                      Rs {netBalance.toFixed(2)}
+                      {formatINR(netBalance)}
                     </p>
                   </div>
                 </div>
@@ -249,10 +364,10 @@ export default function Reports() {
                       <span className="font-medium">{category}</span>
                       <div className="flex gap-4">
                         {amounts.income > 0 && (
-                          <span className="text-green-600">+Rs {amounts.income.toFixed(2)}</span>
+                          <span className="text-green-600">+{formatINR(amounts.income)}</span>
                         )}
                         {amounts.expense > 0 && (
-                          <span className="text-red-600">-Rs {amounts.expense.toFixed(2)}</span>
+                          <span className="text-red-600">-{formatINR(amounts.expense)}</span>
                         )}
                       </div>
                     </div>
@@ -301,11 +416,11 @@ export default function Reports() {
                               {transaction.category}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              Rs {transaction.amount.toFixed(2)}
+                              {formatINR(transaction.amount)}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                               <span className={`px-2 py-1 rounded-full text-xs ${
-                                transaction.type === 'Income' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                                (transaction.type === 'Cash-in' || transaction.type === 'Cash-In') ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                               }`}>
                                 {transaction.type}
                               </span>

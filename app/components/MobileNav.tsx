@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
+import { useAuth } from './AuthProvider'
 
 interface MobileNavProps {
   currentPage: string
@@ -9,23 +11,64 @@ interface MobileNavProps {
 
 export default function MobileNav({ currentPage }: MobileNavProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const [masterExpanded, setMasterExpanded] = useState(false)
+  const { logout, user } = useAuth()
+
+  const handleLogout = async () => {
+    setIsOpen(false)
+    await logout()
+  }
+
+  const getRoleBadge = () => {
+    if (!user) return null
+    
+    const roleColors = {
+      OWNER: 'bg-purple-100 text-purple-800',
+      SITE_MANAGER: 'bg-blue-100 text-blue-800',
+      GUEST: 'bg-gray-100 text-gray-800',
+    }
+    
+    const roleLabels = {
+      OWNER: '👑 Owner',
+      SITE_MANAGER: '🔧 Manager',
+      GUEST: '👤 Guest',
+    }
+    
+    return (
+      <div className={`px-3 py-1 rounded-full text-xs font-medium ${roleColors[user.role]}`}>
+        {roleLabels[user.role]}
+      </div>
+    )
+  }
 
   const navItems = [
     { href: '/', label: 'Dashboard', icon: '📊' },
-    { href: '/accounts', label: 'Accounts', icon: '💼' },
-    { href: '/employees', label: 'Employees', icon: '👥' },
     { href: '/transactions', label: 'Transactions', icon: '💰' },
     { href: '/attendance', label: 'Attendance', icon: '📅' },
     { href: '/payroll', label: 'Payroll', icon: '💵' },
     { href: '/reports', label: 'Reports', icon: '📈' },
   ]
 
+  const masterItems = [
+    { href: '/accounts', label: 'Accounts', icon: '💼' },
+    { href: '/categories', label: 'Categories', icon: '🏷️' },
+    { href: '/employees', label: 'Partners', icon: '👥' },
+  ]
+
+  const isMasterActive = masterItems.some(item => item.href === currentPage)
+
   return (
     <>
       {/* Mobile Header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 bg-white shadow-md z-50">
         <div className="flex items-center justify-between p-4">
-          <h1 className="text-xl font-bold text-gray-800">Ledger App</h1>
+          <Image 
+            src="/brickbook-logo.png" 
+            alt="BrickBook" 
+            width={200} 
+            height={50}
+            priority
+          />
           <button
             onClick={() => setIsOpen(!isOpen)}
             className="p-2 text-gray-600 hover:text-gray-900"
@@ -53,12 +96,25 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
 
       {/* Mobile Sidebar */}
       <div
-        className={`lg:hidden fixed top-0 left-0 bottom-0 w-64 bg-white shadow-lg z-50 transform transition-transform duration-300 ${
+        className={`lg:hidden fixed top-0 left-0 bottom-0 w-64 bg-white shadow-lg z-50 transform transition-transform duration-300 overflow-y-auto ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         <div className="p-6">
-          <h2 className="text-2xl font-bold text-gray-800">Expense Tracker</h2>
+          <Image 
+            src="/brickbook-logo.png" 
+            alt="BrickBook" 
+            width={220} 
+            height={70}
+          />
+          {/* User Info */}
+          {user && (
+            <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+              <div className="text-sm font-medium text-gray-900">{user.name}</div>
+              <div className="text-xs text-gray-600 mb-2">{user.email}</div>
+              {getRoleBadge()}
+            </div>
+          )}
         </div>
         <nav className="mt-6">
           {navItems.map((item) => (
@@ -74,13 +130,75 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
               {item.label}
             </Link>
           ))}
+          
+          {/* Master Menu */}
+          <div>
+            <button
+              onClick={() => setMasterExpanded(!masterExpanded)}
+              className={`w-full flex items-center justify-between px-6 py-3 text-gray-700 hover:bg-gray-200 ${
+                isMasterActive ? 'bg-gray-100' : ''
+              }`}
+            >
+              <span>
+                <span className="mr-2">⚙️</span>
+                Master
+              </span>
+              <svg
+                className={`w-4 h-4 transform transition-transform ${masterExpanded ? 'rotate-180' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {masterExpanded && (
+              <div className="bg-gray-50">
+                {masterItems.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setIsOpen(false)}
+                    className={`block px-12 py-2 text-sm text-gray-700 hover:bg-gray-200 ${
+                      currentPage === item.href ? 'bg-gray-200 font-medium' : ''
+                    }`}
+                  >
+                    <span className="mr-2">{item.icon}</span>
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+          
+          {/* Logout Button */}
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center px-6 py-3 mt-4 text-red-600 hover:bg-red-50 border-t border-gray-200"
+          >
+            <span className="mr-2">🚪</span>
+            Logout
+          </button>
         </nav>
       </div>
 
       {/* Desktop Sidebar */}
-      <div className="hidden lg:block w-64 bg-white shadow-lg">
+      <div className="hidden lg:block w-64 bg-white shadow-lg h-screen overflow-y-auto">
         <div className="p-6">
-          <h2 className="text-2xl font-bold text-gray-800">Expense Tracker</h2>
+          <Image 
+            src="/brickbook-logo.png" 
+            alt="BrickBook" 
+            width={220} 
+            height={70}
+          />
+          {/* User Info */}
+          {user && (
+            <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+              <div className="text-sm font-medium text-gray-900">{user.name}</div>
+              <div className="text-xs text-gray-600 mb-2">{user.email}</div>
+              {getRoleBadge()}
+            </div>
+          )}
         </div>
         <nav className="mt-6">
           {navItems.map((item) => (
@@ -95,6 +213,54 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
               {item.label}
             </Link>
           ))}
+          
+          {/* Master Menu */}
+          <div>
+            <button
+              onClick={() => setMasterExpanded(!masterExpanded)}
+              className={`w-full flex items-center justify-between px-6 py-3 text-gray-700 hover:bg-gray-200 ${
+                isMasterActive ? 'bg-gray-100' : ''
+              }`}
+            >
+              <span>
+                <span className="mr-2">⚙️</span>
+                Master
+              </span>
+              <svg
+                className={`w-4 h-4 transform transition-transform ${masterExpanded ? 'rotate-180' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {masterExpanded && (
+              <div className="bg-gray-50">
+                {masterItems.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`block px-12 py-2 text-sm text-gray-700 hover:bg-gray-200 ${
+                      currentPage === item.href ? 'bg-gray-200 font-medium' : ''
+                    }`}
+                  >
+                    <span className="mr-2">{item.icon}</span>
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+          
+          {/* Logout Button */}
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center px-6 py-3 mt-4 text-red-600 hover:bg-red-50 border-t border-gray-200"
+          >
+            <span className="mr-2">🚪</span>
+            Logout
+          </button>
         </nav>
       </div>
     </>

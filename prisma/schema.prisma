@@ -7,13 +7,36 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum UserRole {
+  OWNER
+  SITE_MANAGER
+  GUEST
+}
+
+model Site {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  location  String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  users     User[]
+  accounts  Account[]
+
+  @@map("sites")
+}
+
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String?  @unique
-  name      String?
-  password  String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           Int           @id @default(autoincrement())
+  email        String?       @unique
+  name         String?
+  password     String?
+  role         UserRole      @default(GUEST)
+  siteId       Int?
+  site         Site?         @relation(fields: [siteId], references: [id])
+  transactions Transaction[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  logoutTime   DateTime?
 
   @@map("users")
 }
@@ -21,12 +44,28 @@ model User {
 model Account {
   id           Int           @id @default(autoincrement())
   name         String
-  balance      Float         @default(0)
+  type         String        @default("General")
+  budget       Float         @default(0)
+  startDate    DateTime?
+  endDate      DateTime?
+  siteId       Int?
+  site         Site?         @relation(fields: [siteId], references: [id])
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   transactions Transaction[]
 
   @@map("accounts")
+}
+
+model Category {
+  id           Int           @id @default(autoincrement())
+  name         String        @unique
+  description  String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  transactions Transaction[]
+
+  @@map("categories")
 }
 
 model Transaction {
@@ -35,9 +74,14 @@ model Transaction {
   description String?
   category    String
   type        String
+  paymentMode String    @default("G-Pay")
   date        DateTime  @db.Timestamp(3)
   accountId   Int
   account     Account   @relation(fields: [accountId], references: [id])
+  categoryId  Int?
+  categoryRef Category? @relation(fields: [categoryId], references: [id])
+  createdBy   Int?
+  createdByUser User?   @relation(fields: [createdBy], references: [id])
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -55,6 +99,7 @@ model Employee {
   status      String       @default("Active")
   attendances Attendance[]
   payrolls    Payroll[]
+  advances    Advance[]
 
   @@map("employees")
 }
@@ -86,12 +131,14 @@ model Payroll {
 }
 
 model Advance {
-  id        Int      @id @default(autoincrement())
-  amount    Float
-  reason    String?
-  date      DateTime
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         Int      @id @default(autoincrement())
+  employeeId Int
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  amount     Float
+  reason     String?
+  date       DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   @@map("advances")
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { compare } from 'bcryptjs'
+import bcrypt from 'bcryptjs'
 import { sign } from 'jsonwebtoken'
 import { prisma } from '@/lib/prisma'
 
@@ -12,9 +12,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User ID and password required' }, { status: 400 })
     }
 
-    const user = await prisma.user.findUnique({
-      where: { user_id: userId }
-    })
+    // Try to find user by ID (if numeric) or by email
+    let user
+    const numericId = parseInt(userId)
+    if (!isNaN(numericId)) {
+      user = await prisma.user.findUnique({
+        where: { id: numericId }
+      })
+    } else {
+      user = await prisma.user.findUnique({
+        where: { email: userId }
+      })
+    }
     console.log('Query result:', user) // Debug
     
     if (!user) {
@@ -22,8 +31,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
     }
 
+    if (!user.password) {
+      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
+    }
+
     console.log('User found, checking password...') // Debug
-    const isValidPassword = await compare(password, user.password)
+    const isValidPassword = await bcrypt.compare(password, user.password)
     console.log('Password valid:', isValidPassword) // Debug
 
     if (!isValidPassword) {
@@ -32,13 +45,23 @@ export async function POST(request: NextRequest) {
 
     // Update last login
     await prisma.user.update({
-      where: { user_id: userId },
-      data: { lastlogin_dt: new Date() }
+      where: { id: user.id },
+      data: { updatedAt: new Date() }
     })
     
-    const token = sign({ userId: user.user_id }, process.env.JWT_SECRET!)
-    const response = NextResponse.json({ success: true, userId: user.user_id })
-    response.cookies.set('auth-token', token, { httpOnly: true, maxAge: 24*60*60 })
+    const token = sign({ userId: user.id }, process.env.JWT_SECRET!)
+    console.log('Token generated:', token.substring(0, 20) + '...')
+    
+    const response = NextResponse.json({ success: true, userId: user.id })
+    response.cookies.set('auth-token', token, { 
+      httpOnly: true, 
+      maxAge: 24*60*60,
+      path: '/',
+      sameSite: 'lax',
+      secure: false // Set to false for localhost
+    })
+    
+    console.log('Cookie set in response')
     return response
 
   } catch (error) {

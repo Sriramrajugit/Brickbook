@@ -2,12 +2,16 @@
 
 import { useState, useEffect } from 'react'
 import MobileNav from './components/MobileNav'
+import { useAuth } from './components/AuthProvider'
+import { formatINR } from '@/lib/formatters'
 
 interface Account {
   id: number
   name: string
-  balance: number
   type: string
+  budget: number
+  totalSpent: number
+  balance: number
 }
 
 interface Transaction {
@@ -21,43 +25,14 @@ interface Transaction {
 }
 
 export default function Home() {
-  const [accounts, setAccounts] = useState<Account[]>([
-    { id: 1, name: 'Main Account', balance: 50.00, type: 'Checking' },
-    { id: 2, name: 'Savings', balance: 1000.00, type: 'Savings' }
-  ])
-
-  const [transactions, setTransactions] = useState<Transaction[]>([
-    {
-      id: 1,
-      amount: 50.0,
-      description: 'Lunch',
-      category: 'Food',
-      type: 'Expense',
-      date: '2025-12-24',
-      accountId: 1,
-    },
-    {
-      id: 2,
-      amount: 100.0,
-      description: 'Salary',
-      category: 'Income',
-      type: 'Income',
-      date: '2025-12-24',
-      accountId: 1,
-    },
-    {
-      id: 3,
-      amount: 500.0,
-      description: 'Savings Transfer',
-      category: 'Transfer',
-      type: 'Expense',
-      date: '2025-12-23',
-      accountId: 1,
-    },
-  ])
+  const { isAuthenticated, isLoading } = useAuth()
+  const [accounts, setAccounts] = useState<Account[]>([])
+  const [transactions, setTransactions] = useState<Transaction[]>([])
 
   useEffect(() => {
-    // Fetch accounts if available
+    if (!isAuthenticated) return
+    
+    // Fetch accounts from database
     const fetchAccounts = async () => {
       try {
         const res = await fetch('/api/accounts')
@@ -69,44 +44,56 @@ export default function Home() {
         console.error('Error fetching accounts:', err)
       }
     }
+
+    // Fetch transactions from database
+    const fetchTransactions = async () => {
+      try {
+        // Fetch all transactions for dashboard calculations (limit=1000)
+        const res = await fetch('/api/transactions?limit=1000')
+        if (res.ok) {
+          const result = await res.json()
+          // API now returns { data: [...], pagination: {...} }
+          setTransactions(result.data || [])
+        }
+      } catch (err) {
+        console.error('Error fetching transactions:', err)
+      }
+    }
+
     fetchAccounts()
-  }, [])
+    fetchTransactions()
+  }, [isAuthenticated])
 
-  // Calculate total balance across all accounts
-  const totalBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0)
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>
+  }
 
-  // Calculate income and expenses this month
-  const currentMonth = new Date().getMonth()
-  const currentYear = new Date().getFullYear()
+  if (!isAuthenticated) {
+    return null // Will redirect via AuthProvider
+  }
 
-  const monthTransactions = transactions.filter(t => {
-    const tDate = new Date(t.date)
-    return tDate.getMonth() === currentMonth && tDate.getFullYear() === currentYear
-  })
+  // Calculate total budget across all accounts
+  const totalBudget = accounts.reduce((sum, acc) => sum + acc.budget, 0)
 
-  const totalIncome = monthTransactions
-    .filter(t => t.type === 'Income')
+  // Calculate overall income and expenses from ALL transactions
+  const totalIncome = transactions
+    .filter(t => t.type === 'Cash-in' || t.type === 'Cash-In')
     .reduce((sum, t) => sum + t.amount, 0)
 
-  const totalExpenses = monthTransactions
-    .filter(t => t.type === 'Expense')
+  const totalExpenses = transactions
+    .filter(t => t.type === 'Cash-out' || t.type === 'Cash-Out')
     .reduce((sum, t) => sum + t.amount, 0)
 
-  // Get account-level summary
+  // Get account-level summary (overall, not just this month)
   const getAccountSummary = (accountId: number) => {
     const accountTransactions = transactions.filter(t => t.accountId === accountId)
-    
-    const monthAccountTransactions = accountTransactions.filter(t => {
-      const tDate = new Date(t.date)
-      return tDate.getMonth() === currentMonth && tDate.getFullYear() === currentYear
-    })
 
-    const income = monthAccountTransactions
-      .filter(t => t.type === 'Income')
+    const income = accountTransactions
+      .filter(t => t.type === 'Cash-in' || t.type === 'Cash-In')
       .reduce((sum, t) => sum + t.amount, 0)
 
-    const expenses = monthAccountTransactions
-      .filter(t => t.type === 'Expense')
+    const expenses = accountTransactions
+      .filter(t => t.type === 'Cash-out' || t.type === 'Cash-Out')
       .reduce((sum, t) => sum + t.amount, 0)
 
     return { income, expenses }
@@ -132,16 +119,16 @@ export default function Home() {
               {/* Overall Summary */}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 lg:gap-6 mb-6 lg:mb-8">
                 <div className="bg-white p-6 rounded-lg shadow">
-                  <h3 className="text-sm font-medium text-gray-500 uppercase">Total Balance</h3>
-                  <p className="text-3xl font-bold text-green-600 mt-2">Rs {totalBalance.toFixed(2)}</p>
+                  <h3 className="text-sm font-medium text-gray-500 uppercase">Total Budget</h3>
+                  <p className="text-3xl font-bold text-green-600 mt-2">{formatINR(totalBudget)}</p>
                 </div>
                 <div className="bg-white p-6 rounded-lg shadow">
-                  <h3 className="text-sm font-medium text-gray-500 uppercase">Income This Month</h3>
-                  <p className="text-3xl font-bold text-blue-600 mt-2">Rs {totalIncome.toFixed(2)}</p>
+                  <h3 className="text-sm font-medium text-gray-500 uppercase">Total Cash in</h3>
+                  <p className="text-3xl font-bold text-blue-600 mt-2">{formatINR(totalIncome)}</p>
                 </div>
                 <div className="bg-white p-6 rounded-lg shadow">
-                  <h3 className="text-sm font-medium text-gray-500 uppercase">Expenses This Month</h3>
-                  <p className="text-3xl font-bold text-red-600 mt-2">Rs {totalExpenses.toFixed(2)}</p>
+                  <h3 className="text-sm font-medium text-gray-500 uppercase">Total Cash-out</h3>
+                  <p className="text-3xl font-bold text-red-600 mt-2">{formatINR(totalExpenses)}</p>
                 </div>
               </div>
 
@@ -163,23 +150,23 @@ export default function Home() {
                         
                         <div className="grid grid-cols-3 gap-4">
                           <div>
-                            <p className="text-xs font-medium text-gray-500 uppercase">Balance</p>
-                            <p className="text-2xl font-bold text-gray-900 mt-1">Rs {account.balance.toFixed(2)}</p>
+                            <p className="text-xs font-medium text-gray-500 uppercase">Budget</p>
+                            <p className="text-xl lg:text-2xl font-bold text-gray-900 mt-1 break-words">{formatINR(account.budget)}</p>
                           </div>
                           <div>
-                            <p className="text-xs font-medium text-gray-500 uppercase">Income</p>
-                            <p className="text-2xl font-bold text-blue-600 mt-1">Rs {summary.income.toFixed(2)}</p>
+                            <p className="text-xs font-medium text-gray-500 uppercase">Cash in</p>
+                            <p className="text-xl lg:text-2xl font-bold text-blue-600 mt-1 break-words">{formatINR(summary.income)}</p>
                           </div>
                           <div>
-                            <p className="text-xs font-medium text-gray-500 uppercase">Expenses</p>
-                            <p className="text-2xl font-bold text-red-600 mt-1">Rs {summary.expenses.toFixed(2)}</p>
+                            <p className="text-xs font-medium text-gray-500 uppercase">Cash-out</p>
+                            <p className="text-xl lg:text-2xl font-bold text-red-600 mt-1 break-words">{formatINR(summary.expenses)}</p>
                           </div>
                         </div>
 
                         <div className="mt-4 pt-4 border-t">
-                          <p className="text-xs font-medium text-gray-500 uppercase">This Month Net</p>
-                          <p className={`text-xl font-bold mt-1 ${summary.income - summary.expenses >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            Rs {(summary.income - summary.expenses).toFixed(2)}
+                          <p className="text-xs font-medium text-gray-500 uppercase">Net Total</p>
+                          <p className={`text-xl font-bold mt-1 break-words ${summary.income - summary.expenses >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {formatINR(summary.income - summary.expenses)}
                           </p>
                         </div>
                       </div>
@@ -213,8 +200,8 @@ export default function Home() {
                             <td className="px-4 py-3 text-sm text-gray-900">{account?.name || 'Unknown'}</td>
                             <td className="px-4 py-3 text-sm text-gray-900">{t.description || '-'}</td>
                             <td className="px-4 py-3 text-sm text-gray-500">{t.category}</td>
-                            <td className={`px-4 py-3 text-sm font-medium text-right ${t.type === 'Income' ? 'text-green-600' : 'text-red-600'}`}>
-                              {t.type === 'Income' ? '+' : '-'}Rs {t.amount.toFixed(2)}
+                            <td className={`px-4 py-3 text-sm font-medium text-right whitespace-nowrap ${(t.type === 'Cash-in' || t.type === 'Cash-In') ? 'text-green-600' : 'text-red-600'}`}>
+                              {(t.type === 'Cash-in' || t.type === 'Cash-In') ? '+' : '-'}{formatINR(t.amount)}
                             </td>
                           </tr>
                         )

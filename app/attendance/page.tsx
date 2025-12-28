@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import MobileNav from '../components/MobileNav'
+import { useAuth } from '../components/AuthProvider'
 
 interface Employee {
   id: number

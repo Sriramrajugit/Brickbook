@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1050 500">
+  <!-- Brick Icon (Red) -->
+  <g>
+    <!-- Top brick -->
+    <rect x="215" y="270" width="80" height="50" rx="5" fill="#C62828"/>
+    <!-- Middle brick -->
+    <rect x="185" y="325" width="80" height="50" rx="5" fill="#C62828"/>
+    <!-- Bottom brick -->
+    <rect x="215" y="380" width="80" height="50" rx="5" fill="#C62828"/>
+    <!-- Right curved part - B shape -->
+    <path d="M 300 280 Q 340 300 340 340 Q 340 380 300 400" stroke="#C62828" stroke-width="50" fill="none" stroke-linecap="round"/>
+  </g>
+  
+  <!-- Text -->
+  <text x="360" y="360" font-family="Arial, sans-serif" font-size="90" font-weight="bold" fill="#C62828">Brick</text>
+  <text x="595" y="360" font-family="Arial, sans-serif" font-size="90" font-weight="bold" fill="#2C3E50">Books</text>
+  
+  <!-- Tagline -->
+  <text x="365" y="420" font-family="Arial, sans-serif" font-size="28" fill="#2C3E50">Your projects. Your records.</text>
+</svg>
