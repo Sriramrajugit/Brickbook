@@ -1,4 +1,17 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Brickbook
+
+A Next.js-based ledger/accounting system for managing transactions, employees, payroll, and attendance.
+
+## Repository
+
+**Git URL:** `https://github.com/Sriramrajugit/Brickbook.git`
+
+To clone this repository:
+```bash
+git clone https://github.com/Sriramrajugit/Brickbook.git
+cd Brickbook
+npm install
+```
 
 ## Getting Started
 
