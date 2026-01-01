@@ -1,12 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getCurrentUser } from '@/lib/auth'
 
 // LIST employees
 export async function GET(request: NextRequest) {
   try {
+    // Get current user for multi-tenancy
+    const user = await getCurrentUser()
+    if (!user || !user.companyId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const companyId = user.companyId as number
+
     const employees = await prisma.employee.findMany({
+      where: { companyId },
       // uncomment next line if you want only active from DB
-      // where: { status: 'Active' },
+      // where: { status: 'Active', companyId },
       include: {
         attendances: true,
         payrolls: true,

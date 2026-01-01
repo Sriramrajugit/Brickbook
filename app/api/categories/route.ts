@@ -5,7 +5,16 @@ import { getCurrentUser } from '@/lib/auth';
 // GET /api/categories
 export async function GET(_req: NextRequest) {
   try {
+    // Get current user for multi-tenancy
+    const user = await getCurrentUser();
+    if (!user || !user.companyId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const companyId = user.companyId as number;
+
     const categories = await prisma.category.findMany({
+      where: { companyId },
       orderBy: { name: 'asc' },
     });
 

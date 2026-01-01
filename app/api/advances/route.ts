@@ -5,7 +5,16 @@ import { getCurrentUser } from '@/lib/auth'
 // LIST advances
 export async function GET(request: NextRequest) {
   try {
+    // Get current user for multi-tenancy
+    const user = await getCurrentUser()
+    if (!user || !user.companyId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const companyId = user.companyId as number
+
     const advances = await prisma.advance.findMany({
+      where: { companyId },
       include: {
         employee: {
           select: {

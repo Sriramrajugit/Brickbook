@@ -1,12 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getCurrentUser } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
+    // Get current user for multi-tenancy
+    const user = await getCurrentUser()
+    if (!user || !user.companyId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const companyId = user.companyId as number
     const { searchParams } = new URL(request.url)
     const dateStr = searchParams.get('date')  // "2025-12-25"
     
-    let whereClause: any = {}
+    let whereClause: any = { companyId }
     if (dateStr) {
       // ✅ FIX: Convert "2025-12-25" → Date object for Prisma DateTime
       const date = new Date(dateStr + 'T00:00:00.000Z')

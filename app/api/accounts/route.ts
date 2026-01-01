@@ -1,9 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getCurrentUser } from '@/lib/auth';
 
 export async function GET(_req: NextRequest) {
   try {
+    // Get current user for multi-tenancy
+    const user = await getCurrentUser();
+    if (!user || !user.companyId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const companyId = user.companyId as number;
+
     const accounts = await prisma.account.findMany({
+      where: { companyId },
       orderBy: { name: 'asc' },
       include: {
         transactions: {
