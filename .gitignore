@@ -1,5 +1,29 @@
 # Exclude backup folders
 web-backup-*/
+backups/
+backup/
+*-backup/
+*.backup/
+
+# Exclude demo folders
+demo/
+demo_backup/
+demo-*/
+*demo*/
+
+# Exclude document folders
+Documents/
+docs/
+documentation/
+
+# Exclude zip and archive files
+*.zip
+*.rar
+*.7z
+*.tar
+*.tar.gz
+*.tgz
+
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
