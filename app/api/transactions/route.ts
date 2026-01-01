@@ -84,20 +84,8 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (err) {
-    console.error('Error fetching transactions:', err);
-    if (err instanceof Error) {
-      console.error('Error message:', err.message);
-      console.error('Error stack:', err.stack);
-    }
-    try {
-      // Log the user context if possible
-      const user = await getCurrentUser();
-      console.error('Current user in error:', user);
-    } catch (e) {
-      console.error('Error getting user in error handler:', e);
-    }
     return NextResponse.json(
-      { error: 'Failed to fetch transactions', details: err instanceof Error ? err.message : String(err) },
+      { error: 'Failed to fetch transactions' },
       { status: 500 },
     );
   }
@@ -124,7 +112,6 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    console.log('TX body:', body);
 
     const amount = Number(body.amount);
     const accountId = Number(body.accountId);
@@ -187,12 +174,6 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(tx, { status: 201 });
   } catch (err) {
-    console.error('Error creating transaction:', err);
-    if (err instanceof Error) {
-      console.error('Error stack:', err.stack);
-    }
-    console.error('TX API error:', err);
-
     return NextResponse.json(
       { error: 'Failed to create transaction' },
       { status: 500 },
@@ -263,7 +244,6 @@ export async function PUT(req: NextRequest) {
 
     return NextResponse.json(transaction);
   } catch (err) {
-    console.error('Error updating transaction:', err);
     return NextResponse.json(
       { error: 'Failed to update transaction' },
       { status: 500 }
@@ -303,7 +283,6 @@ export async function DELETE(req: NextRequest) {
 
     return NextResponse.json({ message: 'Transaction deleted successfully' });
   } catch (err) {
-    console.error('Error deleting transaction:', err);
     return NextResponse.json(
       { error: 'Failed to delete transaction' },
       { status: 500 }

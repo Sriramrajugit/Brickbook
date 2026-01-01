@@ -214,15 +214,10 @@ export default function Transactions() {
         // Fetch all employees (not just active ones) to find the partner
         const empRes = await fetch('/api/employees');
         const allEmployees = empRes.ok ? await empRes.json() : [];
-        console.log('All employees fetched:', allEmployees);
         
         const advancesRes = await fetch('/api/advances');
         if (advancesRes.ok) {
           const advancesData = await advancesRes.json();
-          console.log('Available advances:', advancesData);
-          console.log('Looking for Salary Advance with:');
-          console.log('  Amount:', transaction.amount, 'Type:', typeof transaction.amount);
-          console.log('  Date:', transaction.date);
           
           // Find advance record that matches this transaction amount and date
           // Use flexible matching to account for Decimal/Float differences
@@ -236,38 +231,27 @@ export default function Transactions() {
               // Check if amounts are within 0.01 (to account for rounding)
               const amountsMatch = Math.abs(advAmount - txAmount) < 0.01;
               const datesMatch = advDate === txDate;
-              const matches = amountsMatch && datesMatch;
               
-              console.log(`Advance ${adv.id}: Amount ${advAmount} (match: ${amountsMatch}), Date ${advDate} (match: ${datesMatch}) => ${matches}`);
-              
-              return matches;
+              return amountsMatch && datesMatch;
             }
           );
-          
-          console.log('Matching advance:', matchingAdvance);
           
           if (matchingAdvance && matchingAdvance.employee && matchingAdvance.employee.id) {
             const empId = matchingAdvance.employee.id.toString();
             const empName = matchingAdvance.employee.name || '';
-            console.log('Found employee ID from nested object:', empId, 'Name:', empName);
             setSelectedEmployee(empId);
             setSelectedEmployeeName(empName);
-            console.log('Setting selectedEmployee to:', empId, 'name:', empName);
           } else if (matchingAdvance && matchingAdvance.employeeId) {
             const empId = matchingAdvance.employeeId.toString();
-            console.log('Found employeeId directly:', empId);
             setSelectedEmployee(empId);
             // Try to find name from allEmployees
             if (allEmployees && allEmployees.length > 0) {
               const emp = allEmployees.find((e: any) => e.id.toString() === empId);
               if (emp) {
                 setSelectedEmployeeName(emp.name || '');
-                console.log('Found employee name:', emp.name);
               }
             }
-            console.log('Setting selectedEmployee to:', empId);
           } else {
-            console.log('No matching advance found or invalid employee data');
             setSelectedEmployee('');
             setSelectedEmployeeName('');
           }
@@ -408,21 +392,16 @@ export default function Transactions() {
                 }
               );
               
-              console.log('Old advances to delete:', oldAdvancesToDelete);
-              
               // Delete old advance records
               for (const oldAdv of oldAdvancesToDelete) {
                 try {
-                  const deleteRes = await fetch('/api/advances', {
+                  await fetch('/api/advances', {
                     method: 'DELETE',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ id: oldAdv.id }),
                   });
-                  if (deleteRes.ok) {
-                    console.log('Deleted old advance record:', oldAdv.id);
-                  }
                 } catch (delErr) {
-                  console.error('Error deleting old advance:', delErr);
+                  // Silent error handling
                 }
               }
               
@@ -439,13 +418,11 @@ export default function Transactions() {
               });
               
               if (createRes.ok) {
-                console.log('Created new advance record successfully');
-              } else {
-                console.error('Failed to create new advance record');
+                // Success
               }
             } else {
               // New transaction - create advance record
-              const advanceRes = await fetch('/api/advances', {
+              await fetch('/api/advances', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -455,12 +432,6 @@ export default function Transactions() {
                   date: data.date as string,
                 }),
               });
-
-              if (!advanceRes.ok) {
-                console.error('Failed to create advance record');
-              } else {
-                console.log('Advance record created successfully');
-              }
             }
           }
         } catch (advErr) {
