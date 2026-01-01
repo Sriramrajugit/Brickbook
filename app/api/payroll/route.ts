@@ -10,6 +10,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const companyId = user.companyId as number
+
     const searchParams = request.nextUrl.searchParams
     const fromDate = searchParams.get('fromDate')
     const toDate = searchParams.get('toDate')
@@ -24,7 +26,7 @@ export async function GET(request: NextRequest) {
     // Fetch all active employees for this company
     const employees = await prisma.employee.findMany({
       where: {
-        companyId: user.companyId,
+        companyId: companyId,
         status: 'Active',
       },
       select: {
@@ -50,7 +52,7 @@ export async function GET(request: NextRequest) {
           _sum: { amount: true },
           where: {
             employeeId: emp.id,
-            companyId: user.companyId,
+            companyId: companyId,
             date: { gte: new Date(fromDate), lte: new Date(toDate) },
           },
         })
@@ -62,7 +64,7 @@ export async function GET(request: NextRequest) {
           _sum: { amount: true },
           where: {
             category: 'Salary',
-            companyId: user.companyId,
+            companyId: companyId,
             date: { gte: new Date(fromDate), lte: new Date(toDate) },
           },
         })
@@ -96,6 +98,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const companyId = user.companyId as number
+
     const body = await request.json()
     const { employeeId, accountId, fromDate, toDate, amount, remarks } = body
 
@@ -113,7 +117,7 @@ export async function POST(request: NextRequest) {
         employeeId: parseInt(employeeId),
         fromDate: new Date(fromDate),
         toDate: new Date(toDate),
-        companyId: user.companyId,
+        companyId: companyId,
       },
     })
 
@@ -132,7 +136,7 @@ export async function POST(request: NextRequest) {
         toDate: new Date(toDate),
         amount: parseFloat(amount),
         remarks: remarks || null,
-        companyId: user.companyId,
+        companyId: companyId,
       },
       include: {
         employee: true,

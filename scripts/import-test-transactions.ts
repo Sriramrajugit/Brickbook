@@ -14,6 +14,15 @@ async function main() {
   
   console.log(`Found ${dataLines.length} transactions to import`)
   
+  // Get or create a default company
+  let company = await prisma.company.findFirst()
+  if (!company) {
+    company = await prisma.company.create({
+      data: { name: 'Default Company' }
+    })
+  }
+  const companyId = company.id
+  
   let imported = 0
   let skipped = 0
   
@@ -64,6 +73,7 @@ async function main() {
           date: transactionDate,
           accountId: finalAccountId,
           categoryId: null, // We'll leave this null for now
+          companyId: companyId,
         }
       })
       

@@ -43,8 +43,6 @@ export async function POST(request: NextRequest) {
         salary: salary ? parseFloat(salary) : null,
         status,
         companyId: user.companyId,
-        // siteId is not required in Employee, but add if needed:
-        siteId: user.siteId ?? undefined,
       },
       include: {
         attendances: true,
@@ -65,18 +63,27 @@ export async function POST(request: NextRequest) {
 // UPDATE employee
 export async function PUT(request: NextRequest) {
   try {
+    // Get current user for multi-tenancy
+    const { getCurrentUser } = await import('@/lib/auth');
+    const user = await getCurrentUser();
+    if (!user || !user.companyId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json()
     const { id, name, etype, salary, status } = body
 
+    if (!id) {
+      return NextResponse.json({ error: 'Employee ID is required' }, { status: 400 });
+    }
 
-    const employee = await prisma.employee.create({
+    const employee = await prisma.employee.update({
+      where: { id: parseInt(id) },
       data: {
-        name: body.name,
-        etype: body.etype,
-        salary: Number(body.salary) || 0,
-        status: body.status || 'Active',
-        companyId: user.companyId,
-        siteId: user.siteId,
+        name,
+        etype,
+        salary: salary ? parseFloat(salary) : null,
+        status,
       },
       include: {
         attendances: true,

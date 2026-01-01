@@ -59,6 +59,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const companyId = user.companyId as number
+
     const body = await req.json();
     const { name, type, budget, startDate, endDate } = body;
 
@@ -76,8 +78,8 @@ export async function POST(req: NextRequest) {
         budget: parseFloat(budget),
         startDate: startDate ? new Date(startDate) : undefined,
         endDate: endDate ? new Date(endDate) : undefined,
-        companyId: user.companyId,
-        siteId: user.siteId,
+        companyId: companyId,
+        siteId: user.siteId ?? undefined,
       },
     });
 

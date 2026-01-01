@@ -38,6 +38,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const companyId = user.companyId as number
+
     const body = await request.json()
     const { employeeId, amount, reason, date } = body
 
@@ -54,7 +56,7 @@ export async function POST(request: NextRequest) {
       where: { id: parseInt(employeeId) },
     })
 
-    if (!employee || employee.companyId !== user.companyId) {
+    if (!employee || employee.companyId !== companyId) {
       return NextResponse.json(
         { error: 'Employee not found' },
         { status: 404 },
@@ -71,7 +73,7 @@ export async function POST(request: NextRequest) {
     const advance = await prisma.advance.create({
       data: {
         employeeId: parseInt(employeeId),
-        companyId: user.companyId,
+        companyId: companyId,
         amount: parseFloat(amount),
         reason: reason || null,
         date: new Date(date),

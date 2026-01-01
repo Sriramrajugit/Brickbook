@@ -42,6 +42,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const companyId = user.companyId as number;
+
     const { employeeId, date, status } = await request.json();
 
     // ✅ FIX: Convert date string to DateTime for POST too
@@ -72,7 +74,7 @@ export async function POST(request: NextRequest) {
         employeeId: parseInt(employeeId),
         date: dateTime, // ✅ Use Date object
         status,
-        companyId: user.companyId,
+        companyId: companyId,
         // siteId is not required in Attendance, but add if needed:
         // siteId: user.siteId ?? undefined,
       },

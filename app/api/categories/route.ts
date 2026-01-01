@@ -23,12 +23,14 @@ export async function GET(_req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const user = await getCurrentUser();
-    if (!user) {
+    if (!user || !user.companyId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 },
       );
     }
+
+    const companyId = user.companyId as number;
 
     const body = await req.json();
     const { name, description } = body;
@@ -44,7 +46,7 @@ export async function POST(req: NextRequest) {
       data: {
         name: name.trim(),
         description: description?.trim() || undefined,
-        companyId: user.companyId,
+        companyId: companyId,
       },
     });
 

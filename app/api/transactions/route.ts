@@ -96,12 +96,14 @@ export async function POST(req: NextRequest) {
   try {
     // Get current user
     const user = await getCurrentUser();
-    if (!user) {
+    if (!user || !user.companyId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 },
       );
     }
+
+    const companyId = user.companyId as number;
 
     // Check if user has permission to create transactions
     if (user.role === 'GUEST') {
@@ -156,8 +158,8 @@ export async function POST(req: NextRequest) {
         date: new Date(body.date), // from <input type="date">
         accountId,
         createdBy: user.id,
-        companyId: user.companyId,
-        siteId: user.siteId || undefined,
+        companyId: companyId,
+        siteId: user.siteId ?? undefined,
       },
       include: { 
         account: true,
