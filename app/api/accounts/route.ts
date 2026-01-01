@@ -74,8 +74,8 @@ export async function POST(req: NextRequest) {
         name,
         type,
         budget: parseFloat(budget),
-        startDate: startDate ? new Date(startDate) : null,
-        endDate: endDate ? new Date(endDate) : null,
+        startDate: startDate ? new Date(startDate) : undefined,
+        endDate: endDate ? new Date(endDate) : undefined,
         companyId: user.companyId,
         siteId: user.siteId,
       },
@@ -125,8 +125,8 @@ export async function PUT(req: NextRequest) {
         name,
         type,
         budget: parseFloat(budget),
-        startDate: startDate ? new Date(startDate) : null,
-        endDate: endDate ? new Date(endDate) : null,
+        startDate: startDate ? new Date(startDate) : undefined,
+        endDate: endDate ? new Date(endDate) : undefined,
       },
     });
 

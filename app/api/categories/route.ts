@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     const category = await prisma.category.create({
       data: {
         name: name.trim(),
-        description: description?.trim() || null,
+        description: description?.trim() || undefined,
         companyId: user.companyId,
       },
     });
@@ -91,7 +91,7 @@ export async function PUT(req: NextRequest) {
       where: { id: parseInt(id) },
       data: {
         name: name.trim(),
-        description: description?.trim() || null,
+        description: description?.trim() || undefined,
       },
     });
 

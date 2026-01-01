@@ -149,7 +149,7 @@ export async function POST(req: NextRequest) {
     const tx = await prisma.transaction.create({
       data: {
         amount,
-        description: body.description || null,
+        description: body.description || undefined,
         category: body.category || 'Other',
         type, // 'Income' | 'Expense'
         paymentMode: body.paymentMode || 'G-Pay',
@@ -157,7 +157,7 @@ export async function POST(req: NextRequest) {
         accountId,
         createdBy: user.id,
         companyId: user.companyId,
-        siteId: user.siteId,
+        siteId: user.siteId || undefined,
       },
       include: { 
         account: true,
@@ -222,7 +222,7 @@ export async function PUT(req: NextRequest) {
       where: { id: parseInt(id) },
       data: {
         amount,
-        description: body.description || null,
+        description: body.description || undefined,
         category: body.category || 'Other',
         type: body.type || 'Cash-Out',
         paymentMode: body.paymentMode || 'G-Pay',
