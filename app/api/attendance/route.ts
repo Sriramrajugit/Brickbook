@@ -35,43 +35,53 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { employeeId, date, status } = await request.json()
-    
+    // Get current user for multi-tenancy
+    const { getCurrentUser } = await import('@/lib/auth');
+    const user = await getCurrentUser();
+    if (!user || !user.companyId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { employeeId, date, status } = await request.json();
+
     // ✅ FIX: Convert date string to DateTime for POST too
-    const dateTime = new Date(date + 'T00:00:00.000Z')
-    
+    const dateTime = new Date(date + 'T00:00:00.000Z');
+
     // Validate: Future dates are not allowed
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const attendanceDate = new Date(dateTime)
-    attendanceDate.setHours(0, 0, 0, 0)
-    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const attendanceDate = new Date(dateTime);
+    attendanceDate.setHours(0, 0, 0, 0);
+
     if (attendanceDate > today) {
       return NextResponse.json(
         { error: 'Future date attendance is not allowed' },
         { status: 400 }
-      )
+      );
     }
-    
+
     const attendance = await prisma.attendance.upsert({
       where: {
-        employeeId_date: { 
-          employeeId: parseInt(employeeId), 
-          date: dateTime  // ✅ Use Date object
+        employeeId_date: {
+          employeeId: parseInt(employeeId),
+          date: dateTime // ✅ Use Date object
         }
       },
       update: { status },
       create: {
         employeeId: parseInt(employeeId),
-        date: dateTime,  // ✅ Use Date object
-        status
+        date: dateTime, // ✅ Use Date object
+        status,
+        companyId: user.companyId,
+        // siteId is not required in Attendance, but add if needed:
+        // siteId: user.siteId ?? undefined,
       },
       include: { employee: true }
-    })
-    
-    return NextResponse.json(attendance, { status: 201 })
+    });
+
+    return NextResponse.json(attendance, { status: 201 });
   } catch (error) {
-    console.error('❌ Error saving attendance:', error)
-    return NextResponse.json({ error: 'Failed to save attendance' }, { status: 500 })
+    console.error('❌ Error saving attendance:', error);
+    return NextResponse.json({ error: 'Failed to save attendance' }, { status: 500 });
   }
 }

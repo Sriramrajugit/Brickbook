@@ -355,26 +355,76 @@ export default function Reports() {
                 </div>
               </div>
 
-              {/* Category Breakdown */}
-              <div className="bg-white p-6 rounded-lg shadow mb-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Category Breakdown</h3>
-                <div className="space-y-3">
-                  {Object.entries(categoryBreakdown).map(([category, amounts]) => (
-                    <div key={category} className="flex justify-between items-center p-3 bg-gray-50 rounded-md">
-                      <span className="font-medium">{category}</span>
-                      <div className="flex gap-4">
-                        {amounts.income > 0 && (
-                          <span className="text-green-600">+{formatINR(amounts.income)}</span>
-                        )}
-                        {amounts.expense > 0 && (
-                          <span className="text-red-600">-{formatINR(amounts.expense)}</span>
-                        )}
+              {/* Category Breakdown & Bar Chart - 50/50 Layout */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                {/* Category Breakdown Table */}
+                <div className="bg-white p-6 rounded-lg shadow">
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">Category Breakdown</h3>
+                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                    {Object.entries(categoryBreakdown).map(([category, amounts]) => (
+                      <div key={category} className="flex justify-between items-center p-3 bg-gray-50 rounded-md">
+                        <span className="font-medium text-sm">{category}</span>
+                        <div className="flex gap-4">
+                          {amounts.income > 0 && (
+                            <span className="text-green-600 text-sm">+{formatINR(amounts.income)}</span>
+                          )}
+                          {amounts.expense > 0 && (
+                            <span className="text-red-600 text-sm">-{formatINR(amounts.expense)}</span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                  {Object.keys(categoryBreakdown).length === 0 && (
-                    <p className="text-gray-500 text-center py-4">No transactions found for the selected filters.</p>
-                  )}
+                    ))}
+                    {Object.keys(categoryBreakdown).length === 0 && (
+                      <p className="text-gray-500 text-center py-4">No transactions found for the selected filters.</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Bar Chart */}
+                <div className="bg-white p-6 rounded-lg shadow">
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">Amount by Category</h3>
+                  <div className="flex flex-col justify-center h-80">
+                    {Object.keys(categoryBreakdown).length > 0 ? (
+                      <div className="flex items-end justify-around h-full gap-2">
+                        {Object.entries(categoryBreakdown)
+                          .sort((a, b) => (b[1].income + b[1].expense) - (a[1].income + a[1].expense))
+                          .slice(0, 8)
+                          .map(([category, amounts], index) => {
+                          // Calculate max amount across all categories
+                          const maxAmount = Math.max(
+                            ...Object.entries(categoryBreakdown).map(([_, a]) => a.income + a.expense)
+                          );
+                          const totalAmount = amounts.income + amounts.expense;
+                          const barHeight = (totalAmount / maxAmount) * 100;
+                          
+                          // Color varies based on whether income or expense
+                          const colors = [
+                            'from-blue-500 to-blue-400',
+                            'from-green-500 to-green-400',
+                            'from-purple-500 to-purple-400',
+                            'from-orange-500 to-orange-400',
+                            'from-pink-500 to-pink-400',
+                            'from-indigo-500 to-indigo-400',
+                            'from-cyan-500 to-cyan-400',
+                            'from-teal-500 to-teal-400'
+                          ];
+                          const colorClass = colors[index % colors.length];
+                          
+                          return (
+                            <div key={category} className="flex flex-col items-center gap-2 flex-1">
+                              <div className={`w-full bg-gradient-to-t ${colorClass} rounded-t transition-all duration-300`} style={{ height: `${Math.max(barHeight, 2)}px`, minHeight: '2px' }}></div>
+                              <span className="text-xs text-gray-600 text-center truncate w-full" title={category}>
+                                {category.slice(0, 8)}
+                              </span>
+                              <span className="text-xs font-medium text-gray-700">{formatINR(totalAmount)}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-gray-500 text-center">No data available</p>
+                    )}
+                  </div>
                 </div>
               </div>
 

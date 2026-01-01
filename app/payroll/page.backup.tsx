@@ -131,15 +131,6 @@ export default function Payroll() {
       );
 
       const responses = await Promise.all(savePromises);
-      
-      // Check for any 409 conflict responses (duplicate payroll)
-      const conflictResponse = responses.find((res) => res.status === 409);
-      if (conflictResponse) {
-        const conflictData = await conflictResponse.json();
-        setError(conflictData.error || 'Payroll updates completed for this week');
-        return;
-      }
-
       const allSuccess = responses.every((res) => res.ok);
 
       if (allSuccess) {
@@ -147,17 +138,7 @@ export default function Payroll() {
         setRemarks('');
         setTimeout(() => setSaveSuccess(false), 3000);
       } else {
-        const failedRes = responses.find((res) => !res.ok);
-        if (failedRes) {
-          try {
-            const errData = await failedRes.json();
-            setError(errData.error || 'Failed to save some payroll records.');
-          } catch {
-            setError('Failed to save some payroll records.');
-          }
-        } else {
-          setError('Failed to save some payroll records.');
-        }
+        setError('Failed to save some payroll records.');
       }
     } catch (err) {
       setError('Error saving payroll records.');
@@ -344,75 +325,51 @@ export default function Payroll() {
                           Employee
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Days Worked
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Per Day Salary
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Gross Salary
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Salary
+                          Gross Pay
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Advances
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Net Balance
+                          Net Payable
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Attendance
                         </th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {payrollPreview.length === 0 ? (
                         <tr>
-                          <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
+                          <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
                             {loading ? 'Loading...' : 'No payroll data found. Please select a date range.'}
                           </td>
                         </tr>
                       ) : (
-                        payrollPreview.map((record) => {
-                          const daysWorked = record.attendance.length;
-                          const perDaySalary = record.salary || 0; // Display as-is from employee table
-                          const grossSalary = perDaySalary * daysWorked;
-                          const netBalance = grossSalary - record.totalAdvance;
-                          
-                          return (
-                            <tr key={record.employeeId}>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                {record.employeeName}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                                {daysWorked} days
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                {formatINR(perDaySalary)}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600 font-medium">
-                                {formatINR(grossSalary)}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {formatINR(record.salary)}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-orange-600">
-                                {formatINR(record.totalAdvance)}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-600 font-medium">
-                                {formatINR(netBalance)}
-                              </td>
-                            </tr>
-                          );
-                        })
+                        payrollPreview.map((record) => (
+                          <tr key={record.employeeId}>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                              {record.employeeName}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {formatINR(record.salary)}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-orange-600">
+                              {formatINR(record.totalAdvance)}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-600">
+                              {formatINR(record.salary - record.totalAdvance)}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                              {record.attendance.length} days
+                            </td>
+                          </tr>
+                        ))
                       )}
                     </tbody>
                     <tfoot className="bg-gray-100">
                       <tr>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">TOTAL</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-700"></td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-600"></td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-green-600">
-                          {formatINR(totals.grossPay)}
-                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
                           {formatINR(totals.grossPay)}
                         </td>
@@ -422,6 +379,7 @@ export default function Payroll() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-blue-600">
                           {formatINR(totals.grossPay - totals.advances)}
                         </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-700"></td>
                       </tr>
                     </tfoot>
                   </table>

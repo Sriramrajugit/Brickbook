@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getCurrentUser } from '@/lib/auth'
 
 // LIST advances
 export async function GET(request: NextRequest) {
@@ -32,6 +33,11 @@ export async function GET(request: NextRequest) {
 // CREATE advance
 export async function POST(request: NextRequest) {
   try {
+    const user = await getCurrentUser()
+    if (!user || !user.companyId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
     const { employeeId, amount, reason, date } = body
 
@@ -48,7 +54,7 @@ export async function POST(request: NextRequest) {
       where: { id: parseInt(employeeId) },
     })
 
-    if (!employee) {
+    if (!employee || employee.companyId !== user.companyId) {
       return NextResponse.json(
         { error: 'Employee not found' },
         { status: 404 },
@@ -65,6 +71,7 @@ export async function POST(request: NextRequest) {
     const advance = await prisma.advance.create({
       data: {
         employeeId: parseInt(employeeId),
+        companyId: user.companyId,
         amount: parseFloat(amount),
         reason: reason || null,
         date: new Date(date),
@@ -135,8 +142,17 @@ export async function PUT(request: NextRequest) {
 // DELETE advance
 export async function DELETE(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const id = searchParams.get('id')
+    // Try to get ID from request body first, then from query params
+    let id: string | null = null;
+    
+    try {
+      const body = await request.json();
+      id = body.id ? body.id.toString() : null;
+    } catch (e) {
+      // No body, try query params
+      const { searchParams } = new URL(request.url);
+      id = searchParams.get('id');
+    }
 
     if (!id) {
       return NextResponse.json(

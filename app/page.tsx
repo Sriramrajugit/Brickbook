@@ -132,46 +132,43 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Account-Level Summary */}
+              {/* Account-Level Summary Table */}
               <div className="mb-6 lg:mb-8">
                 <h2 className="text-xl lg:text-2xl font-bold text-gray-900 mb-4">Account Summary</h2>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
-                  {accounts.map(account => {
-                    const summary = getAccountSummary(account.id)
-                    return (
-                      <div key={account.id} className="bg-white p-6 rounded-lg shadow">
-                        <div className="flex justify-between items-start mb-4">
-                          <div>
-                            <h3 className="text-lg font-semibold text-gray-900">{account.name}</h3>
-                            <p className="text-sm text-gray-500">{account.type}</p>
-                          </div>
-                          <a href="/accounts" className="text-blue-600 hover:text-blue-800 text-sm font-medium">View Details →</a>
-                        </div>
-                        
-                        <div className="grid grid-cols-3 gap-4">
-                          <div>
-                            <p className="text-xs font-medium text-gray-500 uppercase">Budget</p>
-                            <p className="text-xl lg:text-2xl font-bold text-gray-900 mt-1 break-words">{formatINR(account.budget)}</p>
-                          </div>
-                          <div>
-                            <p className="text-xs font-medium text-gray-500 uppercase">Cash in</p>
-                            <p className="text-xl lg:text-2xl font-bold text-blue-600 mt-1 break-words">{formatINR(summary.income)}</p>
-                          </div>
-                          <div>
-                            <p className="text-xs font-medium text-gray-500 uppercase">Cash-out</p>
-                            <p className="text-xl lg:text-2xl font-bold text-red-600 mt-1 break-words">{formatINR(summary.expenses)}</p>
-                          </div>
-                        </div>
-
-                        <div className="mt-4 pt-4 border-t">
-                          <p className="text-xs font-medium text-gray-500 uppercase">Net Total</p>
-                          <p className={`text-xl font-bold mt-1 break-words ${summary.income - summary.expenses >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {formatINR(summary.income - summary.expenses)}
-                          </p>
-                        </div>
-                      </div>
-                    )
-                  })}
+                <div className="bg-white rounded-lg shadow overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50 border-b">
+                      <tr>
+                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Account Name</th>
+                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Type</th>
+                        <th className="px-6 py-4 text-right text-sm font-semibold text-gray-900">Budget</th>
+                        <th className="px-6 py-4 text-right text-sm font-semibold text-gray-900">Cash In</th>
+                        <th className="px-6 py-4 text-right text-sm font-semibold text-gray-900">Cash Out</th>
+                        <th className="px-6 py-4 text-right text-sm font-semibold text-gray-900">Net Total</th>
+                        <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {accounts.map(account => {
+                        const summary = getAccountSummary(account.id)
+                        return (
+                          <tr key={account.id} className="hover:bg-gray-50">
+                            <td className="px-6 py-4 text-sm font-medium text-gray-900">{account.name}</td>
+                            <td className="px-6 py-4 text-sm text-gray-700">{account.type}</td>
+                            <td className="px-6 py-4 text-sm text-right text-gray-900">{formatINR(account.budget)}</td>
+                            <td className="px-6 py-4 text-sm text-right text-blue-600 font-medium">{formatINR(summary.income)}</td>
+                            <td className="px-6 py-4 text-sm text-right text-red-600 font-medium">{formatINR(summary.expenses)}</td>
+                            <td className={`px-6 py-4 text-sm text-right font-semibold ${summary.income - summary.expenses >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              {formatINR(summary.income - summary.expenses)}
+                            </td>
+                            <td className="px-6 py-4 text-sm text-center">
+                              <a href="/accounts" className="text-blue-600 hover:text-blue-800 font-medium">Manage →</a>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               </div>
 

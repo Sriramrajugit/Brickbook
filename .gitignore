@@ -1,3 +1,5 @@
+# Exclude backup folders
+web-backup-*/
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies

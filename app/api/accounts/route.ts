@@ -52,6 +52,13 @@ export async function GET(_req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    // Get current user for multi-tenancy
+    const { getCurrentUser } = await import('@/lib/auth');
+    const user = await getCurrentUser();
+    if (!user || !user.companyId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await req.json();
     const { name, type, budget, startDate, endDate } = body;
 
@@ -69,6 +76,8 @@ export async function POST(req: NextRequest) {
         budget: parseFloat(budget),
         startDate: startDate ? new Date(startDate) : null,
         endDate: endDate ? new Date(endDate) : null,
+        companyId: user.companyId,
+        siteId: user.siteId,
       },
     });
 
@@ -84,6 +93,12 @@ export async function POST(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
+    const { getCurrentUser } = await import('@/lib/auth');
+    const user = await getCurrentUser();
+    if (!user || !user.companyId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
     

@@ -1,3 +1,21 @@
+model Company {
+  id           Int           @id @default(autoincrement())
+  name         String        @unique
+  sites        Site[]
+  users        User[]
+  accounts     Account[]
+  categories   Category[]
+  transactions Transaction[]
+  employees    Employee[]
+  attendances  Attendance[]
+  payrolls     Payroll[]
+  advances     Advance[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@map("companies")
+}
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -14,14 +32,18 @@ enum UserRole {
 }
 
 model Site {
-  id        Int       @id @default(autoincrement())
-  name      String    @unique
-  location  String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  users     User[]
-  accounts  Account[]
+  id           Int           @id @default(autoincrement())
+  name         String        @unique
+  location     String?
+  companyId    Int
+  company      Company       @relation(fields: [companyId], references: [id])
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  users        User[]
+  accounts     Account[]
+  transactions Transaction[]
 
+  @@index([companyId])
   @@map("sites")
 }
 
@@ -31,6 +53,8 @@ model User {
   name         String?
   password     String?
   role         UserRole      @default(GUEST)
+  companyId    Int
+  company      Company       @relation(fields: [companyId], references: [id])
   siteId       Int?
   site         Site?         @relation(fields: [siteId], references: [id])
   transactions Transaction[]
@@ -38,6 +62,7 @@ model User {
   updatedAt    DateTime      @updatedAt
   logoutTime   DateTime?
 
+  @@index([companyId])
   @@map("users")
 }
 
@@ -48,12 +73,15 @@ model Account {
   budget       Float         @default(0)
   startDate    DateTime?
   endDate      DateTime?
+  companyId    Int
+  company      Company       @relation(fields: [companyId], references: [id])
   siteId       Int?
   site         Site?         @relation(fields: [siteId], references: [id])
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   transactions Transaction[]
 
+  @@index([companyId])
   @@map("accounts")
 }
 
@@ -61,35 +89,45 @@ model Category {
   id           Int           @id @default(autoincrement())
   name         String        @unique
   description  String?
+  companyId    Int
+  company      Company       @relation(fields: [companyId], references: [id])
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   transactions Transaction[]
 
+  @@index([companyId])
   @@map("categories")
 }
 
 model Transaction {
-  id          Int       @id @default(autoincrement())
-  amount      Float
-  description String?
-  category    String
-  type        String
-  paymentMode String    @default("G-Pay")
-  date        DateTime  @db.Timestamp(3)
-  accountId   Int
-  account     Account   @relation(fields: [accountId], references: [id])
-  categoryId  Int?
-  categoryRef Category? @relation(fields: [categoryId], references: [id])
-  createdBy   Int?
-  createdByUser User?   @relation(fields: [createdBy], references: [id])
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id            Int       @id @default(autoincrement())
+  amount        Float
+  description   String?
+  category      String
+  type          String
+  paymentMode   String    @default("G-Pay")
+  date          DateTime  @db.Timestamp(3)
+  accountId     Int
+  account       Account   @relation(fields: [accountId], references: [id])
+  categoryId    Int?
+  categoryRef   Category? @relation(fields: [categoryId], references: [id])
+  createdBy     Int?
+  createdByUser User?     @relation(fields: [createdBy], references: [id])
+  companyId     Int
+  company       Company   @relation(fields: [companyId], references: [id])
+  siteId        Int?
+  site          Site?     @relation(fields: [siteId], references: [id])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
+  @@index([companyId])
+  @@index([siteId])
   @@map("transactions")
 }
 
-
 model Employee {
+  companyId   Int
+  company     Company      @relation(fields: [companyId], references: [id])
   id          Int          @id @default(autoincrement())
   name        String
   etype       String?
@@ -105,17 +143,21 @@ model Employee {
 }
 
 model Attendance {
-  id        Int      @id @default(autoincrement())
+  companyId  Int
+  company    Company  @relation(fields: [companyId], references: [id])
+  id         Int      @id @default(autoincrement())
   employeeId Int
   employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   date       DateTime
-  status     String   // 'Present', 'Absent', 'Half Day'
-  
+  status     String // 'Present', 'Absent', 'Half Day'
+
   @@unique([employeeId, date])
   @@map("attendances")
 }
 
 model Payroll {
+  companyId  Int
+  company    Company  @relation(fields: [companyId], references: [id])
   id         Int      @id @default(autoincrement())
   employeeId Int
   accountId  Int
@@ -131,6 +173,8 @@ model Payroll {
 }
 
 model Advance {
+  companyId  Int
+  company    Company  @relation(fields: [companyId], references: [id])
   id         Int      @id @default(autoincrement())
   employeeId Int
   employee   Employee @relation(fields: [employeeId], references: [id])
@@ -142,4 +186,3 @@ model Advance {
 
   @@map("advances")
 }
-

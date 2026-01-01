@@ -26,29 +26,39 @@ export async function GET(request: NextRequest) {
 // CREATE employee
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { name, etype, salary, status } = body
+    // Get current user for multi-tenancy
+    const { getCurrentUser } = await import('@/lib/auth');
+    const user = await getCurrentUser();
+    if (!user || !user.companyId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const { name, etype, salary, status } = body;
 
     const employee = await prisma.employee.create({
       data: {
         name,
         etype,
         salary: salary ? parseFloat(salary) : null,
-        status, // make sure your form sends this
+        status,
+        companyId: user.companyId,
+        // siteId is not required in Employee, but add if needed:
+        siteId: user.siteId ?? undefined,
       },
       include: {
         attendances: true,
         payrolls: true,
       },
-    })
+    });
 
-    return NextResponse.json(employee, { status: 201 })
+    return NextResponse.json(employee, { status: 201 });
   } catch (error) {
-    console.error('Error creating employee:', error)
+    console.error('Error creating employee:', error);
     return NextResponse.json(
       { error: 'Failed to save employee' },
       { status: 500 },
-    )
+    );
   }
 }
 
@@ -58,19 +68,21 @@ export async function PUT(request: NextRequest) {
     const body = await request.json()
     const { id, name, etype, salary, status } = body
 
-    const employee = await prisma.employee.update({
-      where: { id: Number(id) },
+
+    const employee = await prisma.employee.create({
       data: {
-        name,
-        etype,
-        salary: salary ? parseFloat(salary) : null,
-        status,
+        name: body.name,
+        etype: body.etype,
+        salary: Number(body.salary) || 0,
+        status: body.status || 'Active',
+        companyId: user.companyId,
+        siteId: user.siteId,
       },
       include: {
         attendances: true,
         payrolls: true,
       },
-    })
+    });
 
     return NextResponse.json(employee)
   } catch (error) {

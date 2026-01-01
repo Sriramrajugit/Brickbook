@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getCurrentUser } from '@/lib/auth';
 
 // GET /api/categories
 export async function GET(_req: NextRequest) {
@@ -21,6 +22,14 @@ export async function GET(_req: NextRequest) {
 // POST /api/categories
 export async function POST(req: NextRequest) {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 },
+      );
+    }
+
     const body = await req.json();
     const { name, description } = body;
 
@@ -35,6 +44,7 @@ export async function POST(req: NextRequest) {
       data: {
         name: name.trim(),
         description: description?.trim() || null,
+        companyId: user.companyId,
       },
     });
 

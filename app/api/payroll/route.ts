@@ -1,41 +1,84 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getCurrentUser } from '@/lib/auth'
 
-// GET - Fetch all payroll records
+// GET - Fetch payroll preview data for a date range
 export async function GET(request: NextRequest) {
   try {
+    const user = await getCurrentUser()
+    if (!user || !user.companyId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const searchParams = request.nextUrl.searchParams
     const fromDate = searchParams.get('fromDate')
     const toDate = searchParams.get('toDate')
-    const employeeId = searchParams.get('employeeId')
-    const accountId = searchParams.get('accountId')
 
-    const where: any = {}
-    
-    if (fromDate && toDate) {
-      where.fromDate = { gte: new Date(fromDate) }
-      where.toDate = { lte: new Date(toDate) }
-    }
-    
-    if (employeeId) {
-      where.employeeId = parseInt(employeeId)
-    }
-    
-    if (accountId) {
-      where.accountId = parseInt(accountId)
+    if (!fromDate || !toDate) {
+      return NextResponse.json(
+        { error: 'fromDate and toDate are required' },
+        { status: 400 }
+      )
     }
 
-    const payrolls = await prisma.payroll.findMany({
-      where,
-      include: {
-        employee: true,
+    // Fetch all active employees for this company
+    const employees = await prisma.employee.findMany({
+      where: {
+        companyId: user.companyId,
+        status: 'Active',
       },
-      orderBy: {
-        createdAt: 'desc'
-      }
+      select: {
+        id: true,
+        name: true,
+        salary: true,
+      },
     })
 
-    return NextResponse.json(payrolls)
+    // For each employee, calculate payroll data
+    const payrollPreview = await Promise.all(
+      employees.map(async (emp) => {
+        // Fetch attendance records
+        const attendance = await prisma.attendance.findMany({
+          where: {
+            employeeId: emp.id,
+            date: { gte: new Date(fromDate), lte: new Date(toDate) },
+          },
+        })
+
+        // Sum advances for this employee in the period from Advance table
+        const advancesData = await prisma.advance.aggregate({
+          _sum: { amount: true },
+          where: {
+            employeeId: emp.id,
+            companyId: user.companyId,
+            date: { gte: new Date(fromDate), lte: new Date(toDate) },
+          },
+        })
+        
+        const totalAdvance = advancesData._sum.amount || 0
+
+        // Sum salary transactions with "Salary" category for this employee in the period
+        const salaryTx = await prisma.transaction.aggregate({
+          _sum: { amount: true },
+          where: {
+            category: 'Salary',
+            companyId: user.companyId,
+            date: { gte: new Date(fromDate), lte: new Date(toDate) },
+          },
+        })
+
+        return {
+          employeeId: emp.id,
+          employeeName: emp.name,
+          salary: emp.salary || 0,
+          attendance,
+          totalAdvance: totalAdvance || 0,
+          totalSalaryPaid: salaryTx._sum.amount || 0,
+        }
+      })
+    )
+
+    return NextResponse.json(payrollPreview)
   } catch (error) {
     console.error('Error fetching payroll:', error)
     return NextResponse.json(
@@ -48,6 +91,11 @@ export async function GET(request: NextRequest) {
 // POST - Create new payroll record
 export async function POST(request: NextRequest) {
   try {
+    const user = await getCurrentUser()
+    if (!user || !user.companyId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
     const { employeeId, accountId, fromDate, toDate, amount, remarks } = body
 
@@ -59,6 +107,23 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Check if payroll already exists for this employee in the same date range
+    const existingPayroll = await prisma.payroll.findFirst({
+      where: {
+        employeeId: parseInt(employeeId),
+        fromDate: new Date(fromDate),
+        toDate: new Date(toDate),
+        companyId: user.companyId,
+      },
+    })
+
+    if (existingPayroll) {
+      return NextResponse.json(
+        { error: 'Payroll updates completed for this week' },
+        { status: 409 }
+      )
+    }
+
     const payroll = await prisma.payroll.create({
       data: {
         employeeId: parseInt(employeeId),
@@ -67,10 +132,11 @@ export async function POST(request: NextRequest) {
         toDate: new Date(toDate),
         amount: parseFloat(amount),
         remarks: remarks || null,
+        companyId: user.companyId,
       },
       include: {
         employee: true,
-      }
+      },
     })
 
     return NextResponse.json(payroll, { status: 201 })
@@ -86,6 +152,11 @@ export async function POST(request: NextRequest) {
 // DELETE - Delete a payroll record
 export async function DELETE(request: NextRequest) {
   try {
+    const user = await getCurrentUser()
+    if (!user || !user.companyId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const searchParams = request.nextUrl.searchParams
     const id = searchParams.get('id')
 
@@ -97,10 +168,10 @@ export async function DELETE(request: NextRequest) {
     }
 
     await prisma.payroll.delete({
-      where: { id: parseInt(id) }
+      where: { id: parseInt(id) },
     })
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ message: 'Payroll record deleted successfully' })
   } catch (error) {
     console.error('Error deleting payroll:', error)
     return NextResponse.json(

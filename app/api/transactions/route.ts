@@ -6,6 +6,12 @@ import { getCurrentUser } from '@/lib/auth';
 // GET /api/transactions
 export async function GET(req: NextRequest) {
   try {
+    // Get current user for multi-tenancy
+    const user = await getCurrentUser();
+    if (!user || !user.companyId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(req.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = Math.min(parseInt(searchParams.get('limit') || '10'), 100);
@@ -16,13 +22,16 @@ export async function GET(req: NextRequest) {
     const endDate = searchParams.get('endDate');
     const search = searchParams.get('search');
 
-    // Build where clause for filtering
-    const where: any = {};
-    
+    // Build where clause for filtering and multi-tenancy
+    const where: any = {
+      companyId: user.companyId,
+    };
+    if (user.siteId) {
+      where.siteId = user.siteId;
+    }
     if (category && category !== 'All') {
       where.category = category;
     }
-    
     if (startDate || endDate) {
       where.date = {};
       if (startDate) where.date.gte = new Date(startDate);
@@ -32,7 +41,6 @@ export async function GET(req: NextRequest) {
         where.date.lte = endDateTime;
       }
     }
-    
     if (search) {
       where.OR = [
         { description: { contains: search, mode: 'insensitive' } },
@@ -77,10 +85,19 @@ export async function GET(req: NextRequest) {
     });
   } catch (err) {
     console.error('Error fetching transactions:', err);
-    console.error('TX API error:', err);
-
+    if (err instanceof Error) {
+      console.error('Error message:', err.message);
+      console.error('Error stack:', err.stack);
+    }
+    try {
+      // Log the user context if possible
+      const user = await getCurrentUser();
+      console.error('Current user in error:', user);
+    } catch (e) {
+      console.error('Error getting user in error handler:', e);
+    }
     return NextResponse.json(
-      { error: 'Failed to fetch transactions' },
+      { error: 'Failed to fetch transactions', details: err instanceof Error ? err.message : String(err) },
       { status: 500 },
     );
   }
@@ -140,6 +157,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
+
+    // Map siteId from user (adjust if your schema uses a different field)
     const tx = await prisma.transaction.create({
       data: {
         amount,
@@ -150,6 +169,8 @@ export async function POST(req: NextRequest) {
         date: new Date(body.date), // from <input type="date">
         accountId,
         createdBy: user.id,
+        companyId: user.companyId,
+        siteId: user.siteId,
       },
       include: { 
         account: true,
@@ -167,6 +188,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(tx, { status: 201 });
   } catch (err) {
     console.error('Error creating transaction:', err);
+    if (err instanceof Error) {
+      console.error('Error stack:', err.stack);
+    }
     console.error('TX API error:', err);
 
     return NextResponse.json(

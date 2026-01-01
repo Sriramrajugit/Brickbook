@@ -70,6 +70,7 @@ export default function Transactions() {
   const [transactionType, setTransactionType] = useState('Cash-Out');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedEmployee, setSelectedEmployee] = useState('');
+  const [selectedEmployeeName, setSelectedEmployeeName] = useState('');
   const [selectedAccount, setSelectedAccount] = useState('');
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingTransactionId, setEditingTransactionId] = useState<number | null>(null);
@@ -191,7 +192,7 @@ export default function Transactions() {
     setSelectedEmployee('');
   };
 
-  const handleEdit = (transaction: Transaction) => {
+  const handleEdit = async (transaction: Transaction) => {
     setIsEditMode(true);
     setEditingTransactionId(transaction.id);
     setSelectedCategory(transaction.category);
@@ -206,6 +207,75 @@ export default function Transactions() {
     if (account) {
       setSelectedAccount(account.id.toString());
     }
+
+    // For Salary Advance, fetch the related advance record to get employeeId
+    if (transaction.category === 'Salary Advance') {
+      try {
+        // Fetch all employees (not just active ones) to find the partner
+        const empRes = await fetch('/api/employees');
+        const allEmployees = empRes.ok ? await empRes.json() : [];
+        console.log('All employees fetched:', allEmployees);
+        
+        const advancesRes = await fetch('/api/advances');
+        if (advancesRes.ok) {
+          const advancesData = await advancesRes.json();
+          console.log('Available advances:', advancesData);
+          console.log('Looking for Salary Advance with:');
+          console.log('  Amount:', transaction.amount, 'Type:', typeof transaction.amount);
+          console.log('  Date:', transaction.date);
+          
+          // Find advance record that matches this transaction amount and date
+          // Use flexible matching to account for Decimal/Float differences
+          const matchingAdvance = advancesData.find(
+            (adv: any) => {
+              const advAmount = Number(adv.amount);
+              const txAmount = Number(transaction.amount);
+              const advDate = new Date(adv.date).toDateString();
+              const txDate = new Date(transaction.date).toDateString();
+              
+              // Check if amounts are within 0.01 (to account for rounding)
+              const amountsMatch = Math.abs(advAmount - txAmount) < 0.01;
+              const datesMatch = advDate === txDate;
+              const matches = amountsMatch && datesMatch;
+              
+              console.log(`Advance ${adv.id}: Amount ${advAmount} (match: ${amountsMatch}), Date ${advDate} (match: ${datesMatch}) => ${matches}`);
+              
+              return matches;
+            }
+          );
+          
+          console.log('Matching advance:', matchingAdvance);
+          
+          if (matchingAdvance && matchingAdvance.employee && matchingAdvance.employee.id) {
+            const empId = matchingAdvance.employee.id.toString();
+            const empName = matchingAdvance.employee.name || '';
+            console.log('Found employee ID from nested object:', empId, 'Name:', empName);
+            setSelectedEmployee(empId);
+            setSelectedEmployeeName(empName);
+            console.log('Setting selectedEmployee to:', empId, 'name:', empName);
+          } else if (matchingAdvance && matchingAdvance.employeeId) {
+            const empId = matchingAdvance.employeeId.toString();
+            console.log('Found employeeId directly:', empId);
+            setSelectedEmployee(empId);
+            // Try to find name from allEmployees
+            if (allEmployees && allEmployees.length > 0) {
+              const emp = allEmployees.find((e: any) => e.id.toString() === empId);
+              if (emp) {
+                setSelectedEmployeeName(emp.name || '');
+                console.log('Found employee name:', emp.name);
+              }
+            }
+            console.log('Setting selectedEmployee to:', empId);
+          } else {
+            console.log('No matching advance found or invalid employee data');
+            setSelectedEmployee('');
+            setSelectedEmployeeName('');
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching advance for edit:', err);
+      }
+    }
     
     // Scroll to form
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -216,6 +286,7 @@ export default function Transactions() {
     setEditingTransactionId(null);
     setSelectedCategory('');
     setSelectedEmployee('');
+    setSelectedEmployeeName('');
     setTransactionType('Cash-Out');
     setFormAmount('');
     setFormDescription('');
@@ -319,31 +390,88 @@ export default function Transactions() {
       // Store edit mode state before resetting
       const wasEditMode = isEditMode;
       
-      // If Salary Advance or Salary, create advance record
-      if ((data.category === 'Salary Advance' || data.category === 'Salary') && selectedEmployee && !wasEditMode) {
+      // Handle Advance record updates/creation
+      if ((data.category === 'Salary Advance' || data.category === 'Salary') && selectedEmployee) {
         try {
-          const advanceRes = await fetch('/api/advances', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              employeeId: parseInt(selectedEmployee),
-              amount: parseFloat(data.amount as string),
-              reason: data.description as string || data.category,
-              date: data.date as string,
-            }),
-          });
+          const advancesRes = await fetch('/api/advances');
+          if (advancesRes.ok) {
+            const advancesData = await advancesRes.json();
+            
+            if (wasEditMode) {
+              // In edit mode: First delete the old advance record(s) for this employee on this date
+              // This prevents duplicates when amount or date changes
+              const oldAdvancesToDelete = advancesData.filter(
+                (adv: any) => {
+                  const advDate = new Date(adv.date).toDateString();
+                  const txDate = new Date(data.date as string).toDateString();
+                  return Number(adv.employeeId) === parseInt(selectedEmployee) && advDate === txDate;
+                }
+              );
+              
+              console.log('Old advances to delete:', oldAdvancesToDelete);
+              
+              // Delete old advance records
+              for (const oldAdv of oldAdvancesToDelete) {
+                try {
+                  const deleteRes = await fetch('/api/advances', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: oldAdv.id }),
+                  });
+                  if (deleteRes.ok) {
+                    console.log('Deleted old advance record:', oldAdv.id);
+                  }
+                } catch (delErr) {
+                  console.error('Error deleting old advance:', delErr);
+                }
+              }
+              
+              // Now create a new advance record with the updated details
+              const createRes = await fetch('/api/advances', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  employeeId: parseInt(selectedEmployee),
+                  amount: parseFloat(data.amount as string),
+                  reason: data.description as string || data.category,
+                  date: data.date as string,
+                }),
+              });
+              
+              if (createRes.ok) {
+                console.log('Created new advance record successfully');
+              } else {
+                console.error('Failed to create new advance record');
+              }
+            } else {
+              // New transaction - create advance record
+              const advanceRes = await fetch('/api/advances', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  employeeId: parseInt(selectedEmployee),
+                  amount: parseFloat(data.amount as string),
+                  reason: data.description as string || data.category,
+                  date: data.date as string,
+                }),
+              });
 
-          if (!advanceRes.ok) {
-            console.error('Failed to create advance record');
+              if (!advanceRes.ok) {
+                console.error('Failed to create advance record');
+              } else {
+                console.log('Advance record created successfully');
+              }
+            }
           }
         } catch (advErr) {
-          console.error('Error creating advance:', advErr);
+          console.error('Error handling advance:', advErr);
         }
       }
       
       // Reset form and edit mode
       setSelectedCategory('');
       setSelectedEmployee('');
+      setSelectedEmployeeName('');
       setIsEditMode(false);
       setEditingTransactionId(null);
       setFormAmount('');
@@ -427,19 +555,6 @@ export default function Transactions() {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700">
-                      Description
-                    </label>
-                    <input
-                      name="description"
-                      type="text"
-                      value={formDescription}
-                      onChange={(e) => setFormDescription(e.target.value)}
-                      className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
                       Category
                     </label>
                     <select
@@ -463,21 +578,56 @@ export default function Transactions() {
                       <label className="block text-sm font-medium text-gray-700">
                         Partner <span className="text-red-500">*</span>
                       </label>
-                      <select
-                        value={selectedEmployee}
-                        onChange={(e) => setSelectedEmployee(e.target.value)}
-                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
-                        required
-                      >
-                        <option value="">Select Partner</option>
-                        {employees.map((emp) => (
-                          <option key={emp.id} value={emp.id}>
-                            {emp.name}
-                          </option>
-                        ))}
-                      </select>
+                      {isEditMode && selectedEmployeeName ? (
+                        <>
+                          <input
+                            type="text"
+                            value={selectedEmployeeName}
+                            disabled
+                            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm bg-gray-100"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">Employee: {selectedEmployeeName}</p>
+                        </>
+                      ) : (
+                        <select
+                          value={selectedEmployee}
+                          onChange={(e) => {
+                            const empId = e.target.value;
+                            setSelectedEmployee(empId);
+                            // Auto-populate description with Partner Name + Category
+                            if ((selectedCategory === 'Salary Advance' || selectedCategory === 'Salary') && empId) {
+                              const selectedEmp = employees.find(emp => emp.id.toString() === empId);
+                              if (selectedEmp) {
+                                setFormDescription(`${selectedEmp.name} - ${selectedCategory}`);
+                              }
+                            }
+                          }}
+                          className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+                          required
+                        >
+                          <option value="">Select Partner</option>
+                          {employees.map((emp) => (
+                            <option key={emp.id} value={emp.id.toString()}>
+                              {emp.name}
+                            </option>
+                          ))}
+                        </select>
+                      )}
                     </div>
                   )}
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Description
+                    </label>
+                    <input
+                      name="description"
+                      type="text"
+                      value={formDescription}
+                      onChange={(e) => setFormDescription(e.target.value)}
+                      className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+                    />
+                  </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700">

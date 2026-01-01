@@ -4,38 +4,49 @@ import bcrypt from 'bcryptjs'
 const prisma = new PrismaClient()
 
 async function main() {
-  // Create sites
+
+  // Create company
+  const company = await prisma.company.upsert({
+    where: { id: 1 },
+    update: { name: 'Demo Company' },
+    create: { id: 1, name: 'Demo Company' },
+  });
+
+  // Create sites linked to company
   const site1 = await prisma.site.upsert({
     where: { id: 1 },
-    update: { name: 'Main Office', location: 'Headquarters' },
+    update: { name: 'Main Office', location: 'Headquarters', companyId: company.id },
     create: {
       id: 1,
       name: 'Main Office',
       location: 'Headquarters',
+      companyId: company.id,
     },
   })
 
   const site2 = await prisma.site.upsert({
     where: { id: 2 },
-    update: { name: 'Site A', location: 'Location A' },
+    update: { name: 'Site A', location: 'Location A', companyId: company.id },
     create: {
       id: 2,
       name: 'Site A',
       location: 'Location A',
+      companyId: company.id,
     },
   })
 
   const site3 = await prisma.site.upsert({
     where: { id: 3 },
-    update: { name: 'Site B', location: 'Location B' },
+    update: { name: 'Site B', location: 'Location B', companyId: company.id },
     create: {
       id: 3,
       name: 'Site B',
       location: 'Location B',
+      companyId: company.id,
     },
   })
 
-  console.log('Sites created:', [site1, site2, site3])
+  console.log('Company and Sites created:', company, [site1, site2, site3])
 
   // Update or create Owner user (password: 'owner123')
   const ownerPassword = await bcrypt.hash('owner123', 10)
@@ -54,6 +65,7 @@ async function main() {
         password: ownerPassword,
         role: UserRole.OWNER,
         siteId: null,
+        companyId: company.id,
       }
     })
   } else {
@@ -71,6 +83,7 @@ async function main() {
           password: ownerPassword,
           role: UserRole.OWNER,
           siteId: null,
+          companyId: company.id,
         }
       })
     } else {
@@ -81,6 +94,7 @@ async function main() {
           password: ownerPassword,
           role: UserRole.OWNER,
           siteId: null,
+          companyId: company.id,
         }
       })
     }
@@ -95,6 +109,7 @@ async function main() {
       password: managerPassword,
       role: UserRole.SITE_MANAGER,
       siteId: site2.id,
+      companyId: company.id,
     },
     create: {
       email: 'manager.a@example.com',
@@ -102,6 +117,7 @@ async function main() {
       password: managerPassword,
       role: UserRole.SITE_MANAGER,
       siteId: site2.id,
+      companyId: company.id,
     },
   })
 
@@ -113,6 +129,7 @@ async function main() {
       password: managerPassword,
       role: UserRole.SITE_MANAGER,
       siteId: site3.id,
+      companyId: company.id,
     },
     create: {
       email: 'manager.b@example.com',
@@ -120,6 +137,7 @@ async function main() {
       password: managerPassword,
       role: UserRole.SITE_MANAGER,
       siteId: site3.id,
+      companyId: company.id,
     },
   })
 
@@ -132,6 +150,7 @@ async function main() {
       password: guestPassword,
       role: UserRole.GUEST,
       siteId: null,
+      companyId: company.id,
     },
     create: {
       email: 'guest@example.com',
@@ -139,6 +158,7 @@ async function main() {
       password: guestPassword,
       role: UserRole.GUEST,
       siteId: null,
+      companyId: company.id,
     },
   })
 
@@ -170,10 +190,11 @@ async function main() {
   for (const categoryName of categories) {
     await prisma.category.upsert({
       where: { name: categoryName },
-      update: {},
+      update: { companyId: company.id },
       create: {
         name: categoryName,
-        description: null
+        description: null,
+        companyId: company.id,
       }
     })
   }

@@ -1,59 +1,61 @@
-import { cookies } from 'next/headers'
-import { verify } from 'jsonwebtoken'
-import { prisma } from '@/lib/prisma'
-import { UserRole } from '@prisma/client'
+
+import { cookies } from 'next/headers';
+import { verify, JwtPayload } from 'jsonwebtoken';
+import { prisma } from '@/lib/prisma';
+import { UserRole } from '@prisma/client';
 
 export interface AuthUser {
-  id: number
-  email: string | null
-  name: string | null
-  role: UserRole
-  siteId: number | null
+  id: number;
+  email: string | null;
+  name: string | null;
+  role: UserRole;
+  companyId: number | null;
+  siteId: number | null;
 }
 
-export async function getCurrentUser(): Promise<AuthUser | null> {
-  try {
-    const cookieStore = await cookies()
-    const token = cookieStore.get('auth-token')?.value
-    
-    if (!token) {
-      return null
-    }
-    
-    const decoded = verify(token, process.env.JWT_SECRET!) as { userId: number }
-    
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.userId },
-      select: { id: true, email: true, name: true, role: true, siteId: true }
-    })
-    
-    return user
-  } catch (error) {
-    return null
-  }
-}
-
+// Export verifyToken for JWT verification (used in logout route)
 export function verifyToken(token: string): { userId: number } | null {
   try {
-    const decoded = verify(token, process.env.JWT_SECRET!) as { userId: number }
-    return decoded
-  } catch (error) {
-    return null
+    const decoded = verify(token, process.env.JWT_SECRET!) as JwtPayload | { userId: number };
+    if (typeof decoded === 'object' && 'userId' in decoded) {
+      return { userId: (decoded as any).userId };
+    }
+    return null;
+  } catch (err) {
+    console.log('verifyToken error:', err);
+    return null;
   }
 }
 
-export function canEdit(role: UserRole): boolean {
-  return role === UserRole.OWNER || role === UserRole.SITE_MANAGER
-}
+// Debug version with extra logging
+export async function getCurrentUser(): Promise<AuthUser | null> {
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get('auth-token')?.value;
+    console.log('Auth token from cookie:', token);
 
-export function canViewAll(role: UserRole): boolean {
-  return role === UserRole.OWNER
-}
+    if (!token) {
+      console.log('No auth-token cookie found');
+      return null;
+    }
 
-export function isGuest(role: UserRole): boolean {
-  return role === UserRole.GUEST
-}
+    try {
+      const decoded = verify(token, process.env.JWT_SECRET!) as { userId: number };
+      console.log('Decoded JWT:', decoded);
 
-export function isSiteManager(role: UserRole): boolean {
-  return role === UserRole.SITE_MANAGER
+      const user = await prisma.user.findUnique({
+        where: { id: decoded.userId },
+        select: { id: true, email: true, name: true, role: true, companyId: true, siteId: true }
+      });
+
+      console.log('User from DB:', user);
+      return user;
+    } catch (jwtErr) {
+      console.log('JWT verification failed:', jwtErr);
+      return null;
+    }
+  } catch (error) {
+    console.log('getCurrentUser error:', error);
+    return null;
+  }
 }

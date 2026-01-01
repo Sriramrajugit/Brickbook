@@ -57,10 +57,9 @@ export default function Navigation() {
           </div>
         </div>
       </div>
-      
       {/* Mobile Navigation */}
       <div className="sm:hidden">
-        <MobileNav />
+        <MobileNav currentPage={pathname} />
       </div>
     </nav>
   )
