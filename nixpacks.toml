@@ -1,5 +1,2 @@
-{
-  "nixpacks": {
-    "pkgs": ["nodejs_20"]
-  }
-}
+[nixpacks]
+pkgs = ["nodejs_20"]
