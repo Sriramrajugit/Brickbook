@@ -148,11 +148,14 @@ export async function POST(req: NextRequest) {
 
 
     // Map siteId from user (adjust if your schema uses a different field)
+    const categoryId = body.categoryId ? Number(body.categoryId) : null;
+    
     const tx = await prisma.transaction.create({
       data: {
         amount,
         description: body.description || undefined,
         category: body.category || 'Other',
+        categoryId: categoryId || null,
         type, // 'Income' | 'Expense'
         paymentMode: body.paymentMode || 'G-Pay',
         date: new Date(body.date), // from <input type="date">
@@ -226,10 +229,12 @@ export async function PUT(req: NextRequest) {
         amount,
         description: body.description || undefined,
         category: body.category || 'Other',
+        categoryId: body.categoryId ? Number(body.categoryId) : null,
         type: body.type || 'Cash-Out',
         paymentMode: body.paymentMode || 'G-Pay',
         date: new Date(body.date),
         accountId,
+        siteId: user.siteId ?? undefined,
       },
       include: {
         account: true,
