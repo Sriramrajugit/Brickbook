@@ -189,7 +189,7 @@ async function main() {
 
   for (const categoryName of categories) {
     await prisma.category.upsert({
-      where: { name: categoryName },
+      where: { name_companyId: { name: categoryName, companyId: company.id } },
       update: { companyId: company.id },
       create: {
         name: categoryName,

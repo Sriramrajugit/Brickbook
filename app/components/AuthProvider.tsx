@@ -8,6 +8,7 @@ interface User {
   email: string | null
   name: string | null
   role: 'OWNER' | 'SITE_MANAGER' | 'GUEST'
+  companyId: number | null
   siteId: number | null
 }
 
