@@ -135,8 +135,8 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
           />
           {/* User Info */}
           {user && (
-            <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-              <div className="text-sm font-medium text-gray-700">{companyName || `Company ${user.companyId}`}</div>
+            <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+              <div className="text-lg font-bold text-blue-700 mb-2">{companyName || `Company ${user.companyId}`}</div>
               {getRoleBadge()}
             </div>
           )}
