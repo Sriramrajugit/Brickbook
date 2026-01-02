@@ -1,12 +1,17 @@
 import { NextResponse } from 'next/server'
 
 export async function GET() {
+  const dbUrl = process.env.DATABASE_URL || ''
+  const urlObj = dbUrl ? new URL(dbUrl) : null
+  
   return NextResponse.json({
-    DATABASE_URL: process.env.DATABASE_URL ? '✓ SET' : '✗ NOT SET',
-    DIRECT_URL: process.env.DIRECT_URL ? '✓ SET' : '✗ NOT SET',
-    JWT_SECRET: process.env.JWT_SECRET ? '✓ SET' : '✗ NOT SET',
+    DATABASE_URL_SET: !!process.env.DATABASE_URL,
+    DATABASE_URL_HOST: urlObj?.hostname || 'COULD NOT PARSE',
+    DATABASE_URL_PORT: urlObj?.port || 'COULD NOT PARSE',
+    DIRECT_URL_SET: !!process.env.DIRECT_URL,
+    JWT_SECRET_SET: !!process.env.JWT_SECRET,
     NODE_ENV: process.env.NODE_ENV,
-    RAILWAY_ENVIRONMENT: process.env.RAILWAY_ENVIRONMENT,
-    DATABASE_URL_FIRST_CHARS: process.env.DATABASE_URL?.substring(0, 50) || 'NOT SET',
+    RAILWAY_ENV: process.env.RAILWAY_ENVIRONMENT,
+    FULL_DB_URL: dbUrl ? `${dbUrl.substring(0, 80)}...` : 'NOT SET'
   })
 }
