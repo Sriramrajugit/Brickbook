@@ -1,22 +1,61 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 
+interface Company {
+  id: number
+  name: string
+}
+
 export default function Login() {
+  const [companies, setCompanies] = useState<Company[]>([])
+  const [selectedCompanyId, setSelectedCompanyId] = useState<number | null>(null)
   const [userId, setUserId] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [companiesLoading, setCompaniesLoading] = useState(true)
   const router = useRouter()
+
+  // Fetch companies on mount
+  useEffect(() => {
+    const fetchCompanies = async () => {
+      try {
+        const response = await fetch('/api/companies')
+        if (response.ok) {
+          const data = await response.json()
+          setCompanies(data)
+          if (data.length > 0) {
+            setSelectedCompanyId(data[0].id)
+          }
+        } else {
+          setError('Failed to load companies')
+        }
+      } catch (err) {
+        console.error('Error fetching companies:', err)
+        setError('Error loading companies. Please try again.')
+      } finally {
+        setCompaniesLoading(false)
+      }
+    }
+
+    fetchCompanies()
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError('')
 
-    console.log('Submitting login...', { userId, password: '***' })
+    if (!selectedCompanyId) {
+      setError('Please select a company')
+      setLoading(false)
+      return
+    }
+
+    console.log('Submitting login...', { userId, companyId: selectedCompanyId, password: '***' })
 
     try {
       const response = await fetch('/api/login', {
@@ -24,7 +63,7 @@ export default function Login() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ userId, password }),
+        body: JSON.stringify({ userId, password, companyId: selectedCompanyId }),
         credentials: 'include', // Important: include cookies
       })
 
@@ -64,6 +103,34 @@ export default function Login() {
           <h2 className="text-xl font-semibold text-gray-600">Welcome Back</h2>
         </div>
         <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label htmlFor="company" className="block text-sm font-medium text-gray-700 mb-2">
+              Company <span className="text-red-500">*</span>
+            </label>
+            {companiesLoading ? (
+              <div className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-500">
+                Loading companies...
+              </div>
+            ) : companies.length === 0 ? (
+              <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded-lg">
+                <p className="text-sm">No companies available. Please contact your administrator.</p>
+              </div>
+            ) : (
+              <select
+                id="company"
+                value={selectedCompanyId || ''}
+                onChange={(e) => setSelectedCompanyId(Number(e.target.value))}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                required
+              >
+                {companies.map((company) => (
+                  <option key={company.id} value={company.id}>
+                    {company.name}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
           <div>
             <label htmlFor="userId" className="block text-sm font-medium text-gray-700 mb-2">
               User ID or Email

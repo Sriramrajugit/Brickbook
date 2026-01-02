@@ -5,13 +5,17 @@ import { prisma } from '@/lib/prisma'
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId, password } = await request.json()
+    const { userId, password, companyId } = await request.json()
 
     if (!userId || !password) {
       return NextResponse.json({ error: 'User ID and password required' }, { status: 400 })
     }
 
-    // Try to find user by ID (if numeric) or by email
+    if (!companyId) {
+      return NextResponse.json({ error: 'Company selection required' }, { status: 400 })
+    }
+
+    // Try to find user by ID (if numeric) or by email AND verify company membership
     let user
     const numericId = parseInt(userId)
     if (!isNaN(numericId)) {
@@ -26,6 +30,11 @@ export async function POST(request: NextRequest) {
     
     if (!user) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
+    }
+
+    // Verify user belongs to selected company
+    if (user.companyId !== companyId) {
+      return NextResponse.json({ error: 'User does not belong to selected company' }, { status: 401 })
     }
 
     if (!user.password) {
