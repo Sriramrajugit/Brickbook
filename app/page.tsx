@@ -29,36 +29,34 @@ export default function Home() {
   const [accounts, setAccounts] = useState<Account[]>([])
   const [transactions, setTransactions] = useState<Transaction[]>([])
 
+  const fetchAccounts = async () => {
+    try {
+      const res = await fetch('/api/accounts')
+      if (res.ok) {
+        const data = await res.json()
+        setAccounts(data)
+      }
+    } catch (err) {
+      console.error('Error fetching accounts:', err)
+    }
+  }
+
+  const fetchTransactions = async () => {
+    try {
+      // Fetch all transactions for dashboard calculations (limit=1000)
+      const res = await fetch('/api/transactions?limit=1000')
+      if (res.ok) {
+        const result = await res.json()
+        // API now returns { data: [...], pagination: {...} }
+        setTransactions(result.data || [])
+      }
+    } catch (err) {
+      console.error('Error fetching transactions:', err)
+    }
+  }
+
   useEffect(() => {
     if (!isAuthenticated) return
-    
-    // Fetch accounts from database
-    const fetchAccounts = async () => {
-      try {
-        const res = await fetch('/api/accounts')
-        if (res.ok) {
-          const data = await res.json()
-          setAccounts(data)
-        }
-      } catch (err) {
-        console.error('Error fetching accounts:', err)
-      }
-    }
-
-    // Fetch transactions from database
-    const fetchTransactions = async () => {
-      try {
-        // Fetch all transactions for dashboard calculations (limit=1000)
-        const res = await fetch('/api/transactions?limit=1000')
-        if (res.ok) {
-          const result = await res.json()
-          // API now returns { data: [...], pagination: {...} }
-          setTransactions(result.data || [])
-        }
-      } catch (err) {
-        console.error('Error fetching transactions:', err)
-      }
-    }
 
     fetchAccounts()
     fetchTransactions()

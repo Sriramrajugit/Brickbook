@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useAuth } from './AuthProvider'
@@ -12,7 +12,33 @@ interface MobileNavProps {
 export default function MobileNav({ currentPage }: MobileNavProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [masterExpanded, setMasterExpanded] = useState(false)
+  const [companyName, setCompanyName] = useState<string>('')
   const { logout, user } = useAuth()
+
+  console.log('MobileNav rendering, companyName:', companyName, 'user:', user?.name)
+
+  useEffect(() => {
+    if (!user?.companyId) return
+
+    const fetchCompanyName = async () => {
+      try {
+        const res = await fetch('/api/companies')
+        if (res.ok) {
+          const companies = await res.json()
+          const company = companies.find((c: any) => c.id === user.companyId)
+          if (company) {
+            console.log('Setting company name:', company.name)
+            setCompanyName(company.name)
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching company:', err)
+      }
+    }
+    
+    console.log('Fetching company for user:', user.companyId)
+    fetchCompanyName()
+  }, [user?.companyId])
 
   const handleLogout = async () => {
     setIsOpen(false)
@@ -94,11 +120,11 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
         />
       )}
 
-      {/* Mobile Sidebar */}
+      {/* Sidebar */}
       <div
-        className={`lg:hidden fixed top-0 left-0 bottom-0 w-64 bg-white shadow-lg z-50 transform transition-transform duration-300 overflow-y-auto ${
+        className={`fixed top-0 left-0 bottom-0 w-64 bg-white shadow-lg z-50 transform transition-transform duration-300 overflow-y-auto ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        } lg:relative lg:translate-x-0 lg:transition-none lg:transform-none`}
       >
         <div className="p-6">
           <Image 
@@ -110,8 +136,7 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
           {/* User Info */}
           {user && (
             <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-              <div className="text-sm font-medium text-gray-900">{user.name}</div>
-              <div className="text-xs text-gray-600 mb-2">{user.email}</div>
+              <div className="text-sm font-medium text-gray-700">{companyName || `Company ${user.companyId}`}</div>
               {getRoleBadge()}
             </div>
           )}
@@ -159,88 +184,6 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
                     key={item.href}
                     href={item.href}
                     onClick={() => setIsOpen(false)}
-                    className={`block px-12 py-2 text-sm text-gray-700 hover:bg-gray-200 ${
-                      currentPage === item.href ? 'bg-gray-200 font-medium' : ''
-                    }`}
-                  >
-                    <span className="mr-2">{item.icon}</span>
-                    {item.label}
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
-          
-          {/* Logout Button */}
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center px-6 py-3 mt-4 text-red-600 hover:bg-red-50 border-t border-gray-200"
-          >
-            <span className="mr-2">🚪</span>
-            Logout
-          </button>
-        </nav>
-      </div>
-
-      {/* Desktop Sidebar */}
-      <div className="hidden lg:block w-64 bg-white shadow-lg h-screen overflow-y-auto">
-        <div className="p-6">
-          <Image 
-            src="/brickbook-logo.png" 
-            alt="BrickBook" 
-            width={220} 
-            height={70}
-          />
-          {/* User Info */}
-          {user && (
-            <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-              <div className="text-sm font-medium text-gray-900">{user.name}</div>
-              <div className="text-xs text-gray-600 mb-2">{user.email}</div>
-              {getRoleBadge()}
-            </div>
-          )}
-        </div>
-        <nav className="mt-6">
-          {navItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`block px-6 py-3 text-gray-700 hover:bg-gray-200 ${
-                currentPage === item.href ? 'bg-gray-100' : ''
-              }`}
-            >
-              <span className="mr-2">{item.icon}</span>
-              {item.label}
-            </Link>
-          ))}
-          
-          {/* Master Menu */}
-          <div>
-            <button
-              onClick={() => setMasterExpanded(!masterExpanded)}
-              className={`w-full flex items-center justify-between px-6 py-3 text-gray-700 hover:bg-gray-200 ${
-                isMasterActive ? 'bg-gray-100' : ''
-              }`}
-            >
-              <span>
-                <span className="mr-2">⚙️</span>
-                Master
-              </span>
-              <svg
-                className={`w-4 h-4 transform transition-transform ${masterExpanded ? 'rotate-180' : ''}`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-            {masterExpanded && (
-              <div className="bg-gray-50">
-                {masterItems.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
                     className={`block px-12 py-2 text-sm text-gray-700 hover:bg-gray-200 ${
                       currentPage === item.href ? 'bg-gray-200 font-medium' : ''
                     }`}

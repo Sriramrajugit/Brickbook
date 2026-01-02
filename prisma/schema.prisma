@@ -87,7 +87,7 @@ model Account {
 
 model Category {
   id           Int           @id @default(autoincrement())
-  name         String        @unique
+  name         String
   description  String?
   companyId    Int
   company      Company       @relation(fields: [companyId], references: [id])
@@ -95,6 +95,7 @@ model Category {
   updatedAt    DateTime      @updatedAt
   transactions Transaction[]
 
+  @@unique([name, companyId])
   @@index([companyId])
   @@map("categories")
 }

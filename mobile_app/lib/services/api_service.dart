@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/account.dart';
+import '../models/company.dart';
 import '../models/employee.dart';
 import '../models/transaction.dart';
 import '../models/attendance.dart';
@@ -8,6 +9,16 @@ import '../models/attendance.dart';
 class ApiService {
   // Update this to your backend API URL
   static const String baseUrl = 'http://192.168.0.102:3000/api';
+  
+  // Companies
+  static Future<List<Company>> getCompanies() async {
+    final response = await http.get(Uri.parse('$baseUrl/companies'));
+    if (response.statusCode == 200) {
+      final List<dynamic> data = json.decode(response.body);
+      return data.map((json) => Company.fromJson(json)).toList();
+    }
+    throw Exception('Failed to load companies');
+  }
   
   // Accounts
   static Future<List<Account>> getAccounts() async {
@@ -59,9 +70,11 @@ class ApiService {
 
   // Transactions
   static Future<List<Transaction>> getTransactions() async {
-    final response = await http.get(Uri.parse('$baseUrl/transactions'));
+    final response = await http.get(Uri.parse('$baseUrl/transactions?limit=1000'));
     if (response.statusCode == 200) {
-      final List<dynamic> data = json.decode(response.body);
+      final Map<String, dynamic> result = json.decode(response.body);
+      // API returns { data: [...], pagination: {...} }
+      final List<dynamic> data = result['data'] ?? [];
       return data.map((json) => Transaction.fromJson(json)).toList();
     }
     throw Exception('Failed to load transactions');
@@ -113,3 +126,4 @@ class ApiService {
     }
   }
 }
+

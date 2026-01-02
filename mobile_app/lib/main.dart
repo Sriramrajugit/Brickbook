@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/accounts_screen.dart';
 import 'screens/employees_screen.dart';
@@ -29,8 +30,9 @@ class LedgerApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
       ),
-      initialRoute: '/',
+      initialRoute: '/login',
       routes: {
+        '/login': (context) => const LoginScreen(),
         '/': (context) => const DashboardScreen(),
         '/accounts': (context) => const AccountsScreen(),
         '/employees': (context) => const EmployeesScreen(),

@@ -1,12 +1,35 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { useAuth } from './AuthProvider'
 import MobileNav from './MobileNav'
 
 export default function Navigation() {
   const pathname = usePathname()
-  const { logout } = useAuth()
+  const { logout, user } = useAuth()
+  const [companyName, setCompanyName] = useState<string>('')
+
+  useEffect(() => {
+    if (!user?.companyId) return
+
+    const fetchCompanyName = async () => {
+      try {
+        const res = await fetch('/api/companies')
+        if (res.ok) {
+          const companies = await res.json()
+          const company = companies.find((c: any) => c.id === user.companyId)
+          if (company) {
+            setCompanyName(company.name)
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching company:', err)
+      }
+    }
+    
+    fetchCompanyName()
+  }, [user?.companyId])
 
   const handleLogout = async () => {
     await logout()
@@ -27,8 +50,8 @@ export default function Navigation() {
     <nav className="bg-white shadow-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
-          <div className="flex">
-            <div className="flex-shrink-0 flex items-center">
+          <div className="flex items-center">
+            <div className="flex-shrink-0 flex flex-col items-start">
               <h1 className="text-xl font-bold text-gray-800">Ledger</h1>
             </div>
             <div className="hidden sm:ml-6 sm:flex sm:space-x-4">
@@ -47,7 +70,12 @@ export default function Navigation() {
               ))}
             </div>
           </div>
-          <div className="flex items-center">
+          <div className="flex items-center gap-4">
+            {user && (
+              <div className="text-sm font-semibold text-blue-700 bg-blue-50 px-3 py-1 rounded">
+                {companyName || `Company ${user.companyId}`}
+              </div>
+            )}
             <button
               onClick={handleLogout}
               className="ml-4 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
