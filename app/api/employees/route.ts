@@ -15,19 +15,24 @@ export async function GET(request: NextRequest) {
 
     const employees = await prisma.employee.findMany({
       where: { companyId },
-      // uncomment next line if you want only active from DB
-      // where: { status: 'Active', companyId },
-      include: {
-        attendances: true,
-        payrolls: true,
+      // Don't include relations - they can cause performance issues
+      select: {
+        id: true,
+        name: true,
+        etype: true,
+        salary: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
       },
     })
 
     return NextResponse.json(employees)
   } catch (error) {
     console.error('Error fetching employees:', error)
+    const errorMsg = error instanceof Error ? error.message : String(error)
     return NextResponse.json(
-      { error: 'Failed to fetch employees' },
+      { error: 'Failed to fetch employees', details: errorMsg },
       { status: 500 },
     )
   }
@@ -54,9 +59,14 @@ export async function POST(request: NextRequest) {
         status,
         companyId: user.companyId,
       },
-      include: {
-        attendances: true,
-        payrolls: true,
+      select: {
+        id: true,
+        name: true,
+        etype: true,
+        salary: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
       },
     });
 
@@ -95,9 +105,14 @@ export async function PUT(request: NextRequest) {
         salary: salary ? parseFloat(salary) : null,
         status,
       },
-      include: {
-        attendances: true,
-        payrolls: true,
+      select: {
+        id: true,
+        name: true,
+        etype: true,
+        salary: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
       },
     });
 
