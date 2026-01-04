@@ -53,6 +53,18 @@ export default function Accounts() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Validate: End date cannot be earlier than start date
+    if (formData.startDate && formData.endDate) {
+      const startDate = new Date(formData.startDate);
+      const endDate = new Date(formData.endDate);
+      
+      if (endDate < startDate) {
+        alert('End date cannot be earlier than start date');
+        return;
+      }
+    }
+    
     try {
       const url = editingId ? `/api/accounts?id=${editingId}` : '/api/accounts'
       const method = editingId ? 'PUT' : 'POST'

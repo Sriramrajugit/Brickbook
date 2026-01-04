@@ -133,13 +133,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Validate: Future dates are not allowed
+    // Validate: Only truly future dates are not allowed (today is OK)
     const transactionDate = new Date(body.date);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0);
     transactionDate.setHours(0, 0, 0, 0);
     
-    if (transactionDate > today) {
+    if (transactionDate >= tomorrow) {
       return NextResponse.json(
         { error: 'Future date transactions are not allowed' },
         { status: 400 },

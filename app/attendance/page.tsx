@@ -15,7 +15,7 @@ interface AttendanceRecord {
   employeeId: number
   employeeName: string
   date: string
-  status: 'Present' | 'Absent' | 'Half Day' | 'Not Marked'
+  status: number // 0=Absent, 1=Present, 1.5=OT4Hrs, 2=OT8Hrs
 }
 
 export default function Attendance() {
@@ -97,7 +97,7 @@ export default function Attendance() {
   const markAttendance = async (
     employeeId: number,
     employeeName: string,
-    status: 'Present' | 'Absent' | 'Half Day'
+    status: number // 0=Absent, 1=Present, 1.5=OT4Hrs, 2=OT8Hrs
   ) => {
     // Validate: No future dates allowed
     const today = new Date()
@@ -139,7 +139,24 @@ export default function Attendance() {
     const record = attendanceRecords.find(
       r => r.employeeId === employeeId && r.date === selectedDate
     )
-    return record?.status || 'Not Marked'
+    return record?.status ?? -1 // Return -1 for "Not Marked"
+  }
+
+  // Helper function to convert numeric status to display text
+  const getStatusDisplay = (status: number): string => {
+    if (status === 1) return 'Present'
+    if (status === 1.5) return 'OT 4Hrs'
+    if (status === 2) return 'OT 8Hrs'
+    if (status === 0) return 'Absent'
+    return 'Not Marked'
+  }
+
+  // Helper function to get status color
+  const getStatusColor = (status: number): string => {
+    if (status === 1) return 'text-green-600'
+    if (status === 1.5 || status === 2) return 'text-purple-600'
+    if (status === 0) return 'text-red-600'
+    return 'text-gray-500'
   }
 
   if (loading) {
@@ -197,18 +214,8 @@ export default function Attendance() {
                           </h4>
                           <p className="text-sm text-gray-600">
                             Today&apos;s Status:{' '}
-                            <span
-                              className={`font-medium ${
-                                getAttendanceStatus(employee.id) === 'Present'
-                                  ? 'text-green-600'
-                                  : getAttendanceStatus(employee.id) === 'Half Day'
-                                  ? 'text-yellow-600'
-                                  : getAttendanceStatus(employee.id) === 'Absent'
-                                  ? 'text-red-600'
-                                  : 'text-gray-500'
-                              }`}
-                            >
-                              {getAttendanceStatus(employee.id)}
+                            <span className={`font-medium ${getStatusColor(getAttendanceStatus(employee.id))}`}>
+                              {getStatusDisplay(getAttendanceStatus(employee.id))}
                             </span>
                           </p>
                         </div>
@@ -219,16 +226,10 @@ export default function Attendance() {
                             <input
                               type="radio"
                               name={`status-${employee.id}`}
-                              value="Present"
-                              checked={
-                                getAttendanceStatus(employee.id) === 'Present'
-                              }
+                              value="1"
+                              checked={getAttendanceStatus(employee.id) === 1}
                               onChange={() =>
-                                markAttendance(
-                                  employee.id,
-                                  employee.name,
-                                  'Present'
-                                )
+                                markAttendance(employee.id, employee.name, 1)
                               }
                               className="h-4 w-4 text-green-600 border-gray-300"
                             />
@@ -241,35 +242,49 @@ export default function Attendance() {
                             <input
                               type="radio"
                               name={`status-${employee.id}`}
-                              value="Half Day"
-                              checked={
-                                getAttendanceStatus(employee.id) === 'Half Day'
-                              }
+                              value="1.5"
+                              checked={getAttendanceStatus(employee.id) === 1.5}
                               onChange={() =>
                                 markAttendance(
                                   employee.id,
                                   employee.name,
-                                  'Half Day'
+                                  1.5
                                 )
                               }
-                              className="h-4 w-4 text-yellow-500 border-gray-300"
+                              className="h-4 w-4 text-purple-500 border-gray-300"
                             />
-                            <span className="text-xs text-gray-800">Half</span>
+                            <span className="text-xs text-gray-800">OT 4Hrs</span>
                           </label>
 
                           <label className="inline-flex items-center space-x-1 cursor-pointer">
                             <input
                               type="radio"
                               name={`status-${employee.id}`}
-                              value="Absent"
-                              checked={
-                                getAttendanceStatus(employee.id) === 'Absent'
-                              }
+                              value="2"
+                              checked={getAttendanceStatus(employee.id) === 2}
                               onChange={() =>
                                 markAttendance(
                                   employee.id,
                                   employee.name,
-                                  'Absent'
+                                  2
+                                )
+                              }
+                              className="h-4 w-4 text-purple-600 border-gray-300"
+                            />
+                            <span className="text-xs text-gray-800">OT 8Hrs</span>
+                          </label>
+
+                          <label className="inline-flex items-center space-x-1 cursor-pointer">
+                            <input
+                              type="radio"
+                              name={`status-${employee.id}`}
+                              value="0"
+                              checked={getAttendanceStatus(employee.id) === 0}
+                              onChange={() =>
+                                markAttendance(
+                                  employee.id,
+                                  employee.name,
+                                  0
                                 )
                               }
                               className="h-4 w-4 text-red-600 border-gray-300"
@@ -317,7 +332,7 @@ export default function Attendance() {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                               <span className="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                {record.status}
+                                {getStatusDisplay(record.status)}
                               </span>
                             </td>
                           </tr>

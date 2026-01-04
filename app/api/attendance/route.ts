@@ -54,6 +54,28 @@ export async function POST(request: NextRequest) {
 
     const { employeeId, date, status } = await request.json();
 
+    // Validate status is a valid numeric multiplier
+    const validStatuses: Record<string, number> = {
+      'Present': 1,
+      'OT4Hrs': 1.5,
+      'OT8Hrs': 2,
+      'Absent': 0
+    };
+
+    let numericStatus: number;
+    if (typeof status === 'number') {
+      // If already numeric, validate it's a valid value
+      numericStatus = status;
+    } else if (validStatuses[status]) {
+      // If string, convert to numeric
+      numericStatus = validStatuses[status];
+    } else {
+      return NextResponse.json(
+        { error: 'Invalid attendance status' },
+        { status: 400 }
+      );
+    }
+
     // ✅ FIX: Convert date string to DateTime for POST too
     const dateTime = new Date(date + 'T00:00:00.000Z');
 
@@ -77,11 +99,11 @@ export async function POST(request: NextRequest) {
           date: dateTime // ✅ Use Date object
         }
       },
-      update: { status },
+      update: { status: numericStatus },
       create: {
         employeeId: parseInt(employeeId),
         date: dateTime, // ✅ Use Date object
-        status,
+        status: numericStatus,
         companyId: companyId,
         // siteId is not required in Attendance, but add if needed:
         // siteId: user.siteId ?? undefined,

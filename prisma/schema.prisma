@@ -152,7 +152,7 @@ model Attendance {
   employeeId Int
   employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   date       DateTime
-  status     String // 'Present', 'Absent', 'Half Day'
+  status     Float    // 1=Present, 0=Absent, 1.5=OT4Hrs, 2=OT8Hrs
 
   @@unique([employeeId, date])
   @@map("attendances")

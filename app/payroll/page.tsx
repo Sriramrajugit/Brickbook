@@ -8,6 +8,7 @@ import { formatINR } from '@/lib/formatters';
 interface PayrollPreview {
   employeeId: number;
   employeeName: string;
+  baseSalary: number;
   salary: number;
   totalAdvance: number;
   totalSalaryPaid: number;
@@ -110,57 +111,106 @@ export default function Payroll() {
       return;
     }
 
+    if (!startDate || !endDate) {
+      setError('Please select a date range first.');
+      return;
+    }
+
+    // Validate: End date should not be in future
+    const endDateTime = new Date(endDate);
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0);
+    endDateTime.setHours(0, 0, 0, 0);
+
+    if (endDateTime >= tomorrow) {
+      setError('Cannot save payroll for future dates. Please select a past or current date range.');
+      return;
+    }
+
     try {
       setSaveSuccess(false);
       setError('');
 
-      // Create payroll records for each employee
-      const savePromises = payrollPreview.map((record) =>
-        fetch('/api/payroll', {
+      // Get the account ID for transactions
+      const accountId = selectedAccount !== 'All' ? parseInt(selectedAccount) : accounts[0]?.id;
+      if (!accountId) {
+        setError('Please select an account.');
+        return;
+      }
+
+      // First, check if payroll already exists for this period and create payroll + transaction records
+      const savePromises = payrollPreview.map(async (record) => {
+        const netBalance = record.salary - record.totalAdvance;
+
+        // Step 1: Create payroll record
+        const payrollRes = await fetch('/api/payroll', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             employeeId: record.employeeId,
-            accountId: selectedAccount !== 'All' ? parseInt(selectedAccount) : accounts[0]?.id,
+            accountId: accountId,
             fromDate: startDate,
             toDate: endDate,
-            amount: record.salary - record.totalAdvance,
+            amount: netBalance,
             remarks: remarks || null,
           }),
-        })
-      );
+        });
 
-      const responses = await Promise.all(savePromises);
-      
-      // Check for any 409 conflict responses (duplicate payroll)
-      const conflictResponse = responses.find((res) => res.status === 409);
-      if (conflictResponse) {
-        const conflictData = await conflictResponse.json();
-        setError(conflictData.error || 'Payroll updates completed for this week');
-        return;
-      }
-
-      const allSuccess = responses.every((res) => res.ok);
-
-      if (allSuccess) {
-        setSaveSuccess(true);
-        setRemarks('');
-        setTimeout(() => setSaveSuccess(false), 3000);
-      } else {
-        const failedRes = responses.find((res) => !res.ok);
-        if (failedRes) {
-          try {
-            const errData = await failedRes.json();
-            setError(errData.error || 'Failed to save some payroll records.');
-          } catch {
-            setError('Failed to save some payroll records.');
-          }
-        } else {
-          setError('Failed to save some payroll records.');
+        // Check for 409 conflict (payroll already exists for this week)
+        if (payrollRes.status === 409) {
+          const conflictData = await payrollRes.json();
+          throw new Error(conflictData.error || 'Payroll already saved for this week');
         }
-      }
+
+        if (!payrollRes.ok) {
+          const errData = await payrollRes.json();
+          throw new Error(errData.error || 'Failed to create payroll record');
+        }
+
+        // Step 2: Create transaction entry for this employee's salary
+        const transactionRes = await fetch('/api/transactions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            amount: netBalance,
+            description: `Salary for ${record.employeeName}`,
+            category: 'Salary',
+            type: 'Cash-Out',
+            paymentMode: 'Bank Transfer',
+            date: endDate, // Use end date of payroll period
+            accountId: accountId,
+          }),
+        });
+
+        if (!transactionRes.ok) {
+          const errData = await transactionRes.json();
+          throw new Error(errData.error || 'Failed to create salary transaction');
+        }
+
+        return { payrollRes, transactionRes };
+      });
+
+      const results = await Promise.all(savePromises);
+
+      // All successful - refresh the payroll data
+      setSaveSuccess(true);
+      setRemarks('');
+      
+      // Reset date range to show fresh data with 0 balance
+      setStartDate('');
+      setEndDate('');
+      
+      // Refresh payroll preview (will now show empty or 0 balance)
+      setPayrollPreview([]);
+      
+      setTimeout(() => {
+        setSaveSuccess(false);
+      }, 3000);
+
     } catch (err) {
-      setError('Error saving payroll records.');
+      const errorMsg = err instanceof Error ? err.message : 'Error saving payroll records.';
+      setError(errorMsg);
       console.error('Error:', err);
     }
   };
@@ -190,14 +240,32 @@ export default function Payroll() {
               )}
 
               {error && (
-                <div className="bg-red-50 border border-red-200 p-4 rounded-lg shadow mb-6">
-                  <p className="text-red-700">{error}</p>
+                <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-lg shadow mb-6">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-red-800 font-semibold">Error</p>
+                      <p className="text-red-700 text-sm mt-1">{error}</p>
+                    </div>
+                  </div>
                 </div>
               )}
 
               {saveSuccess && (
                 <div className="bg-green-50 border border-green-200 p-4 rounded-lg shadow mb-6">
-                  <p className="text-green-700">✓ Payroll records saved successfully!</p>
+                  <div className="flex items-start">
+                    <svg className="h-5 w-5 text-green-600 mt-0.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <div className="ml-3">
+                      <p className="text-green-800 font-semibold">Payroll Saved Successfully!</p>
+                      <p className="text-green-700 text-sm mt-1">All salary transactions have been created. Page will refresh shortly.</p>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -347,13 +415,13 @@ export default function Payroll() {
                           Days Worked
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          OT Hours
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Per Day Salary
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Gross Salary
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Salary
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Advances
@@ -372,9 +440,21 @@ export default function Payroll() {
                         </tr>
                       ) : (
                         payrollPreview.map((record) => {
-                          const daysWorked = record.attendance.length;
-                          const perDaySalary = record.salary || 0; // Display as-is from employee table
-                          const grossSalary = perDaySalary * daysWorked;
+                          // record.salary now contains the calculated gross salary based on attendance
+                          const grossSalary = record.salary; // Already calculated in backend
+                          const baseDailySalary = record.baseSalary || 0; // Base salary from employee record
+                          
+                          // Calculate Days Worked INCLUDING OT multipliers (sum of all status values)
+                          // Present=1, OT4Hrs=1.5, OT8Hrs=2, Absent=0
+                          const daysWorked = record.attendance.reduce((total, att) => total + att.status, 0);
+                          
+                          // Calculate OT hours: OT4Hrs (status=1.5) = 4 hours, OT8Hrs (status=2) = 8 hours
+                          const otHours = record.attendance.reduce((total, att) => {
+                            if (att.status === 1.5) return total + 4; // OT4Hrs
+                            if (att.status === 2) return total + 8;   // OT8Hrs
+                            return total;
+                          }, 0);
+                          
                           const netBalance = grossSalary - record.totalAdvance;
                           
                           return (
@@ -385,14 +465,14 @@ export default function Payroll() {
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                                 {daysWorked} days
                               </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                                {otHours > 0 ? `${otHours} hrs` : '-'}
+                              </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                {formatINR(perDaySalary)}
+                                {formatINR(baseDailySalary)}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600 font-medium">
                                 {formatINR(grossSalary)}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {formatINR(record.salary)}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-orange-600">
                                 {formatINR(record.totalAdvance)}
@@ -409,11 +489,9 @@ export default function Payroll() {
                       <tr>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">TOTAL</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-700"></td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-700"></td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-600"></td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-green-600">
-                          {formatINR(totals.grossPay)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
                           {formatINR(totals.grossPay)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-orange-600">
