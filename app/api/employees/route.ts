@@ -73,8 +73,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(employee, { status: 201 });
   } catch (error) {
     console.error('Error creating employee:', error);
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error('Detailed error:', errorMsg);
     return NextResponse.json(
-      { error: 'Failed to save employee' },
+      { error: 'Failed to save employee', details: errorMsg },
       { status: 500 },
     );
   }
@@ -119,8 +121,9 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json(employee)
   } catch (error) {
     console.error('Error updating employee:', error)
+    const errorMsg = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
-      { error: 'Failed to save employee' },
+      { error: 'Failed to save employee', details: errorMsg },
       { status: 500 },
     )
   }
