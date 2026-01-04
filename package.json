@@ -11,7 +11,7 @@
     "dev": "next dev -H 0.0.0.0",
     "dev:https": "next dev -H 0.0.0.0 --experimental-https",
     "build": "prisma generate && next build",
-    "start": "node -e \"const { execSync } = require('child_process'); try { execSync('npx prisma migrate deploy --skip-generate', { stdio: 'inherit' }); } catch (e) { console.log('Migrations may already be applied'); } require('next/dist/bin/next').nextStart()\" || next start",
+    "start": "npx prisma migrate deploy && next start",
     "lint": "eslint",
     "clean": "rimraf .next node_modules/.cache",
     "clean:all": "rimraf .next node_modules",
