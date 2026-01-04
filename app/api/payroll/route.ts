@@ -91,8 +91,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(payrollPreview)
   } catch (error) {
     console.error('Error fetching payroll:', error)
+    const errorMsg = error instanceof Error ? error.message : String(error)
+    console.error('Detailed error:', errorMsg)
     return NextResponse.json(
-      { error: 'Failed to fetch payroll records' },
+      { 
+        error: 'Failed to fetch payroll records',
+        details: errorMsg // Return detailed error for debugging
+      },
       { status: 500 }
     )
   }

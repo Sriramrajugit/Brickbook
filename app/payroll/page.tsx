@@ -85,11 +85,15 @@ export default function Payroll() {
           toDate: endDate,
         });
         const res = await fetch(`/api/payroll?${params.toString()}`);
-        if (!res.ok) throw new Error('Failed to fetch payroll preview');
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.details || errData.error || 'Failed to fetch payroll preview');
+        }
         const data = await res.json();
         setPayrollPreview(data);
       } catch (err) {
-        setError('Failed to load payroll preview');
+        const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+        setError(`Failed to load payroll preview: ${errorMsg}`);
         console.error('Error:', err);
       } finally {
         setLoading(false);
