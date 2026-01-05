@@ -108,14 +108,14 @@ class ApiService {
     throw Exception('Failed to load attendance');
   }
 
-  static Future<Attendance> markAttendance(int employeeId, String date, String status) async {
+  static Future<Attendance> markAttendance(int employeeId, String date, double status) async {
     final response = await http.post(
       Uri.parse('$baseUrl/attendance'),
       headers: {'Content-Type': 'application/json'},
       body: json.encode({
         'employeeId': employeeId,
         'date': date,
-        'status': status,
+        'status': status, // 1=Present, 0=Absent, 1.5=OT4Hrs, 2=OT8Hrs
       }),
     );
     if (response.statusCode == 201 || response.statusCode == 200) {
