@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
         // Calculate gross salary based on attendance multiplier
         // Simply multiply daily salary by the attendance status value
         const dailySalary = emp.salary || 0
-        const grossSalary = attendance.reduce((sum, record) => {
+        const grossSalary = attendance.reduce((sum: number, record: any) => {
           return sum + (dailySalary * record.status)
         }, 0)
 
