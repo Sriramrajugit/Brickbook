@@ -7,8 +7,11 @@ const prisma = new PrismaClient()
 type UserRole = 'OWNER' | 'SITE_MANAGER' | 'GUEST'
 
 async function main() {
+  console.log('🌱 Starting database seed...')
+  console.log('DATABASE_URL:', process.env.DATABASE_URL ? 'SET' : 'NOT SET')
 
   // Create company
+  console.log('📝 Creating company...')
   const company = await prisma.company.upsert({
     where: { id: 1 },
     update: { name: 'Demo Company' },
@@ -203,6 +206,13 @@ async function main() {
   }
 
   console.log(`${categories.length} categories created/updated`)
+  
+  console.log('✅ Database seeding completed successfully!')
+  console.log('Users created:')
+  console.log('  - owner@example.com / owner123')
+  console.log('  - manager.a@example.com / manager123')
+  console.log('  - manager.b@example.com / manager123')
+  console.log('  - guest@example.com / guest123')
 }
 
 main()
@@ -210,7 +220,7 @@ main()
     await prisma.$disconnect()
   })
   .catch(async (e) => {
-    console.error(e)
+    console.error('❌ Seeding failed:', e)
     await prisma.$disconnect()
     process.exit(1)
   })
