@@ -2,7 +2,9 @@
 import { cookies } from 'next/headers';
 import { verify, JwtPayload } from 'jsonwebtoken';
 import { prisma } from '@/lib/prisma';
-import { UserRole } from '@prisma/client';
+
+// Type for UserRole (matches Prisma schema)
+type UserRole = 'OWNER' | 'SITE_MANAGER' | 'GUEST';
 
 export interface AuthUser {
   id: number;

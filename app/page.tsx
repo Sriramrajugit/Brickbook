@@ -25,7 +25,7 @@ interface Transaction {
 }
 
 export default function Home() {
-  const { isAuthenticated, isLoading } = useAuth()
+  const { isAuthenticated, isLoading, user } = useAuth()
   const [accounts, setAccounts] = useState<Account[]>([])
   const [transactions, setTransactions] = useState<Transaction[]>([])
 
@@ -56,11 +56,16 @@ export default function Home() {
   }
 
   useEffect(() => {
-    if (!isAuthenticated) return
+    if (!isAuthenticated) {
+      // Clear all data on logout
+      setAccounts([])
+      setTransactions([])
+      return
+    }
 
     fetchAccounts()
     fetchTransactions()
-  }, [isAuthenticated])
+  }, [isAuthenticated, user?.companyId])
 
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>
@@ -130,7 +135,8 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Account-Level Summary Table */}
+              {/* Account-Level Summary Table - Only show if accounts exist */}
+              {accounts.length > 0 && (
               <div className="mb-6 lg:mb-8">
                 <h2 className="text-xl lg:text-2xl font-bold text-gray-900 mb-4">Account Summary</h2>
                 <div className="bg-white rounded-lg shadow overflow-x-auto">
@@ -169,6 +175,7 @@ export default function Home() {
                   </table>
                 </div>
               </div>
+              )}
 
               {/* Recent Transactions */}
               <div className="bg-white p-6 rounded-lg shadow">

@@ -1,7 +1,10 @@
-import { PrismaClient, UserRole } from '@prisma/client'
+import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
+
+// Type for UserRole to avoid importing from Prisma
+type UserRole = 'OWNER' | 'SITE_MANAGER' | 'GUEST'
 
 async function main() {
 
@@ -63,7 +66,7 @@ async function main() {
       data: {
         name: 'Owner',
         password: ownerPassword,
-        role: UserRole.OWNER,
+        role: 'OWNER',
         siteId: null,
         companyId: company.id,
       }
@@ -81,7 +84,7 @@ async function main() {
           email: 'owner@example.com',
           name: 'Owner',
           password: ownerPassword,
-          role: UserRole.OWNER,
+          role: 'OWNER',
           siteId: null,
           companyId: company.id,
         }
@@ -92,7 +95,7 @@ async function main() {
           email: 'owner@example.com',
           name: 'Owner',
           password: ownerPassword,
-          role: UserRole.OWNER,
+          role: 'OWNER',
           siteId: null,
           companyId: company.id,
         }
@@ -107,7 +110,7 @@ async function main() {
     update: {
       name: 'Manager Site A',
       password: managerPassword,
-      role: UserRole.SITE_MANAGER,
+      role: 'SITE_MANAGER',
       siteId: site2.id,
       companyId: company.id,
     },
@@ -115,7 +118,7 @@ async function main() {
       email: 'manager.a@example.com',
       name: 'Manager Site A',
       password: managerPassword,
-      role: UserRole.SITE_MANAGER,
+      role: 'SITE_MANAGER',
       siteId: site2.id,
       companyId: company.id,
     },
@@ -127,7 +130,7 @@ async function main() {
     update: {
       name: 'Manager Site B',
       password: managerPassword,
-      role: UserRole.SITE_MANAGER,
+      role: 'SITE_MANAGER',
       siteId: site3.id,
       companyId: company.id,
     },
@@ -135,7 +138,7 @@ async function main() {
       email: 'manager.b@example.com',
       name: 'Manager Site B',
       password: managerPassword,
-      role: UserRole.SITE_MANAGER,
+      role: 'SITE_MANAGER',
       siteId: site3.id,
       companyId: company.id,
     },
@@ -148,7 +151,7 @@ async function main() {
     update: {
       name: 'Guest User',
       password: guestPassword,
-      role: UserRole.GUEST,
+      role: 'GUEST',
       siteId: null,
       companyId: company.id,
     },
@@ -156,7 +159,7 @@ async function main() {
       email: 'guest@example.com',
       name: 'Guest User',
       password: guestPassword,
-      role: UserRole.GUEST,
+      role: 'GUEST',
       siteId: null,
       companyId: company.id,
     },
