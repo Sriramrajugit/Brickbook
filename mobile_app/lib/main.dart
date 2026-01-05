@@ -24,12 +24,43 @@ class LedgerApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Ledger App',
+      title: 'Ledger - Financial Management',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.blue,
+          brightness: Brightness.light,
+        ),
+        useMaterial3: true,
+        appBarTheme: AppBarTheme(
+          backgroundColor: ColorScheme.fromSeed(seedColor: Colors.blue).primary,
+          foregroundColor: Colors.white,
+          elevation: 0,
+        ),
+        cardTheme: CardTheme(
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 12,
+          ),
+        ),
+      ),
+      darkTheme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.blue,
+          brightness: Brightness.dark,
+        ),
         useMaterial3: true,
       ),
+      themeMode: ThemeMode.light,
       initialRoute: '/login',
       routes: {
         '/login': (context) => const LoginScreen(),
@@ -40,6 +71,18 @@ class LedgerApp extends StatelessWidget {
         '/attendance': (context) => const AttendanceScreen(),
         '/payroll': (context) => const PayrollScreen(),
         '/reports': (context) => const ReportsScreen(),
+      },
+      // Error handling for navigation
+      onGenerateRoute: (settings) {
+        // If an undefined route is encountered, show an error
+        return MaterialPageRoute(
+          builder: (context) => Scaffold(
+            appBar: AppBar(title: const Text('Error')),
+            body: Center(
+              child: Text('Route not found: ${settings.name}'),
+            ),
+          ),
+        );
       },
     );
   }
