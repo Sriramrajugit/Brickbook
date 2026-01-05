@@ -26,14 +26,14 @@ export async function GET(_req: NextRequest) {
     });
 
     // Calculate balance for each account
-    const accountsWithSpent = accounts.map(account => {
+    const accountsWithSpent = accounts.map((account: any) => {
       const totalCashIn = account.transactions
-        .filter(t => t.type === 'Cash-in' || t.type === 'Cash-In')
-        .reduce((sum, t) => sum + t.amount, 0);
+        .filter((t: any) => t.type === 'Cash-in' || t.type === 'Cash-In')
+        .reduce((sum: number, t: any) => sum + t.amount, 0);
       
       const totalCashOut = account.transactions
-        .filter(t => t.type === 'Cash-out' || t.type === 'Cash-Out')
-        .reduce((sum, t) => sum + t.amount, 0);
+        .filter((t: any) => t.type === 'Cash-out' || t.type === 'Cash-Out')
+        .reduce((sum: number, t: any) => sum + t.amount, 0);
       
       const totalSpent = totalCashOut;
       const balance = account.budget + totalCashIn - totalCashOut;
