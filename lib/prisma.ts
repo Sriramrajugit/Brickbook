@@ -14,7 +14,8 @@ export const prisma: PrismaClient =
     log: process.env.NODE_ENV === 'development' 
       ? ['query', 'error', 'warn']
       : ['error'],
-    errorFormat: 'pretty'
+    errorFormat: 'pretty',
+    omit: ['password'] // Omit sensitive fields from logs
   });
 
 if (process.env.NODE_ENV !== 'production') {
