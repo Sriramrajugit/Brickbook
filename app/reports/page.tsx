@@ -171,54 +171,161 @@ export default function Reports() {
   // Download as PDF
   const downloadPDF = () => {
     const doc = new jsPDF()
+    const pageWidth = doc.internal.pageSize.getWidth()
+    const pageHeight = doc.internal.pageSize.getHeight()
+    let currentY = 10
     
-    // Title
-    doc.setFontSize(18)
-    doc.text('Transactions Report', 14, 20)
+    // Get account name
+    const selectedAccountName = selectedAccount !== 'All' 
+      ? accounts.find(a => a.id === Number(selectedAccount))?.name 
+      : 'All Accounts'
     
-    // Report info
+    // Header (BrickBook - Financial Management) - top right, small
+    doc.setFontSize(9)
+    doc.setFont(undefined, 'normal')
+    doc.setTextColor(200, 0, 0) // Red color
+    const headerText = 'BrickBook - Financial Management'
+    doc.text(headerText, pageWidth - 30, currentY, { align: 'right' })
+    doc.setTextColor(0, 0, 0) // Back to black
+    
+    currentY += 8
+    
+    // Title: "AccountName - Transaction Summary Report" (centered)
+    doc.setFontSize(14)
+    doc.setFont(undefined, 'bold')
+    const titleText = `${selectedAccountName} - Transaction Summary Report`
+    const titleWidth = doc.getTextWidth(titleText)
+    doc.text(titleText, (pageWidth - titleWidth) / 2, currentY)
+    currentY += 8
+    
+    // Date Range and Generated On (centered)
     doc.setFontSize(10)
-    doc.text(`Generated: ${new Date().toLocaleDateString('en-IN')}`, 14, 30)
-    if (startDate || endDate) {
-      doc.text(`Period: ${startDate || 'Start'} to ${endDate || 'End'}`, 14, 36)
-    }
-    if (selectedCategory !== 'All') {
-      doc.text(`Category: ${selectedCategory}`, 14, 42)
-    }
-    if (selectedAccount !== 'All') {
-      const account = accounts.find(a => a.id === Number(selectedAccount))
-      doc.text(`Account: ${account?.name || '-'}`, 14, 48)
-    }
-
-    // Summary section
-    const summaryY = (selectedCategory !== 'All' || selectedAccount !== 'All') ? 56 : 50
-    doc.setFontSize(12)
-    doc.text('Summary', 14, summaryY)
+    doc.setFont(undefined, 'normal')
     
-    doc.setFontSize(10)
-    doc.text(`Total Income: ${formatINR(totalIncome)}`, 14, summaryY + 6)
-    doc.text(`Total Expenses: ${formatINR(totalExpenses)}`, 14, summaryY + 12)
-    doc.text(`Net Balance: ${formatINR(netBalance)}`, 14, summaryY + 18)
-
-    // Transactions table
-    const tableData = filteredTransactions.map(t => [
-      new Date(t.date).toLocaleDateString('en-IN'),
-      t.account?.name || (accounts.find(a => a.id === t.accountId)?.name || '-'),
-      t.description || '-',
-      t.category,
-      t.type,
-      formatINR(t.amount)
-    ])
-
+    let dateRangeText = ''
+    if (startDate && endDate) {
+      dateRangeText = `From Date: ${startDate} | To Date: ${endDate}`
+    } else if (startDate) {
+      dateRangeText = `From Date: ${startDate}`
+    } else if (endDate) {
+      dateRangeText = `To Date: ${endDate}`
+    }
+    
+    if (dateRangeText) {
+      const dateWidth = doc.getTextWidth(dateRangeText)
+      doc.text(dateRangeText, (pageWidth - dateWidth) / 2, currentY)
+      currentY += 5
+    }
+    
+    const generatedText = `Generated On: ${new Date().toLocaleDateString('en-IN')} ${new Date().toLocaleTimeString('en-IN')}`
+    const generatedWidth = doc.getTextWidth(generatedText)
+    doc.text(generatedText, (pageWidth - generatedWidth) / 2, currentY)
+    currentY += 5
+    
+    // Horizontal line
+    doc.setDrawColor(0, 0, 0)
+    doc.line(10, currentY, pageWidth - 10, currentY)
+    currentY += 6
+    
+    // Transaction Summary header
+    doc.setFontSize(11)
+    doc.setFont(undefined, 'bold')
+    doc.text('Transaction Summary', 14, currentY)
+    currentY += 6
+    
+    // Summary Table with Total Cash In, Total Cash Out, Net Balance
+    const summaryTableData = [
+      ['Total Cash In', 'Total Cash Out', 'Net Balance'],
+      [`Rs ${totalIncome.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`, 
+           `Rs ${totalExpenses.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`, 
+           `Rs ${netBalance.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`]
+    ]
+    
     autoTable(doc, {
-      head: [['Date', 'Account', 'Description', 'Category', 'Type', 'Amount']],
-      body: tableData,
-      startY: summaryY + 26,
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [59, 130, 246] },
-      margin: { top: 10 }
+      head: summaryTableData.slice(0, 1),
+      body: summaryTableData.slice(1),
+      startY: currentY,
+      styles: { 
+        fontSize: 10,
+        cellPadding: 3,
+        halign: 'center'
+      },
+      headStyles: { 
+        fillColor: [59, 130, 246],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold'
+      },
+      bodyStyles: {
+        fillColor: [255, 255, 255]
+      },
+      columnStyles: {
+        0: { cellWidth: 50 },
+        1: { cellWidth: 50 },
+        2: { cellWidth: 50 }
+      },
+      margin: { left: 14, right: 14 }
     })
+    
+    currentY = (doc as any).lastAutoTable.finalY + 3
+    
+    // Horizontal line
+    doc.setDrawColor(0, 0, 0)
+    doc.line(10, currentY, pageWidth - 10, currentY)
+    currentY += 6
+    
+    // Transactions table
+    if (filteredTransactions.length > 0) {
+      const tableData = filteredTransactions.map((t, index) => [
+        (index + 1).toString(), // #
+        new Date(t.date).toLocaleDateString('en-IN'),
+        t.category,
+        t.description || '-',
+        t.type,
+        t.amount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})
+      ])
 
+      autoTable(doc, {
+        head: [['#', 'Date', 'Category', 'Description', 'Transaction Type', 'Amount']],
+        body: tableData,
+        startY: currentY,
+        styles: { 
+          fontSize: 9, 
+          cellPadding: 3,
+          halign: 'left'
+        },
+        headStyles: { 
+          fillColor: [100, 149, 237],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          halign: 'center'
+        },
+        bodyStyles: {
+          fillColor: [255, 255, 255]
+        },
+        columnStyles: {
+          0: { cellWidth: 12, halign: 'center' },
+          1: { cellWidth: 22 },
+          2: { cellWidth: 25 },
+          3: { cellWidth: 35 },
+          4: { cellWidth: 30 },
+          5: { cellWidth: 25, halign: 'right' }
+        },
+        margin: { left: 14, right: 14 }
+      })
+    }
+    
+    // Footer with page numbers (left aligned)
+    const totalPages = (doc as any).internal.pages.length - 1
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i)
+      doc.setFontSize(9)
+      doc.text(
+        `Page ${i}/${totalPages}`,
+        14,
+        pageHeight - 8
+      )
+    }
+    
     // Save PDF
     const filename = `Transactions_Report_${startDate || 'all'}_to_${endDate || 'all'}.pdf`
     doc.save(filename)
