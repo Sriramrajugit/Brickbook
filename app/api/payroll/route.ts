@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
 
     // For each employee, calculate payroll data
     const payrollPreview = await Promise.all(
-      employees.map(async (emp) => {
+      employees.map(async (emp: any) => {
         // Fetch attendance records
         const attendance = await prisma.attendance.findMany({
           where: {
