@@ -13,6 +13,8 @@ interface Account {
   name: string
   balance: number
   type: string
+  startDate?: string | null
+  endDate?: string | null
 }
 
 interface Transaction {
@@ -35,6 +37,7 @@ export default function Reports() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [validationErrors, setValidationErrors] = useState<string[]>([])
 
   // Fetch accounts and transactions from API
   useEffect(() => {
@@ -92,6 +95,37 @@ export default function Reports() {
 
     fetchData()
   }, [])
+
+  // Validate date range against selected account
+  useEffect(() => {
+    const errors: string[] = []
+
+    if (selectedAccount !== 'All' && (startDate || endDate)) {
+      const selectedAcctData = accounts.find(a => a.id === Number(selectedAccount))
+      
+      if (selectedAcctData) {
+        // Check if report start date is before account start date
+        if (selectedAcctData.startDate && startDate) {
+          const reportStart = new Date(startDate)
+          const accountStart = new Date(selectedAcctData.startDate)
+          if (reportStart < accountStart) {
+            errors.push(`Report start date (${startDate}) cannot be before account start date (${selectedAcctData.startDate.split('T')[0]})`)
+          }
+        }
+
+        // Check if report end date is after account end date
+        if (selectedAcctData.endDate && endDate) {
+          const reportEnd = new Date(endDate)
+          const accountEnd = new Date(selectedAcctData.endDate)
+          if (reportEnd > accountEnd) {
+            errors.push(`Report end date (${endDate}) cannot be after account end date (${selectedAcctData.endDate.split('T')[0]})`)
+          }
+        }
+      }
+    }
+
+    setValidationErrors(errors)
+  }, [startDate, endDate, selectedAccount, accounts])
 
   // Filter transactions based on date, category, and account
   const filteredTransactions = transactions.filter(transaction => {
@@ -354,6 +388,26 @@ export default function Reports() {
               {error && (
                 <div className="bg-red-50 border border-red-200 p-4 rounded-lg shadow mb-6">
                   <p className="text-red-700">{error} (Using sample data)</p>
+                </div>
+              )}
+
+              {/* Validation Errors */}
+              {validationErrors.length > 0 && (
+                <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-6">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      {validationErrors.map((err, idx) => (
+                        <p key={idx} className="text-sm text-red-700 mb-1">
+                          ⚠️ {err}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               )}
 
