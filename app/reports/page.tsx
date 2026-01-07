@@ -216,7 +216,7 @@ export default function Reports() {
     
     // Header (BrickBook - Financial Management) - top right, small
     doc.setFontSize(9)
-    doc.setFont(undefined, 'normal')
+    doc.setFont('helvetica', 'normal')
     doc.setTextColor(200, 0, 0) // Red color
     const headerText = 'BrickBook - Financial Management'
     doc.text(headerText, pageWidth - 30, currentY, { align: 'right' })
@@ -226,7 +226,7 @@ export default function Reports() {
     
     // Title: "AccountName - Transaction Summary Report" (centered)
     doc.setFontSize(14)
-    doc.setFont(undefined, 'bold')
+    doc.setFont('helvetica', 'bold')
     const titleText = `${selectedAccountName} - Transaction Summary Report`
     const titleWidth = doc.getTextWidth(titleText)
     doc.text(titleText, (pageWidth - titleWidth) / 2, currentY)
@@ -234,7 +234,7 @@ export default function Reports() {
     
     // Date Range and Generated On (centered)
     doc.setFontSize(10)
-    doc.setFont(undefined, 'normal')
+    doc.setFont('helvetica', 'normal')
     
     let dateRangeText = ''
     if (startDate && endDate) {
@@ -263,7 +263,7 @@ export default function Reports() {
     
     // Transaction Summary header
     doc.setFontSize(11)
-    doc.setFont(undefined, 'bold')
+    doc.setFont('helvetica', 'bold')
     doc.text('Transaction Summary', 14, currentY)
     currentY += 6
     
