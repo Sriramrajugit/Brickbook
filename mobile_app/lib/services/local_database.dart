@@ -93,6 +93,9 @@ class LocalDatabase {
         date: maps[i]['date'],
         accountId: maps[i]['accountId'],
         paymentMode: maps[i]['paymentMode'],
+        companyId: maps[i]['companyId'] ?? 1,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
       );
     });
   }
@@ -142,6 +145,8 @@ class LocalDatabase {
         etype: maps[i]['etype'],
         salary: maps[i]['salary'],
         status: maps[i]['status'],
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
       );
     });
   }

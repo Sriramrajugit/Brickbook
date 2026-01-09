@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import MobileNav from '../components/MobileNav';
 import { useAuth } from '../components/AuthProvider';
-import { formatINR } from '@/lib/formatters';
+import { formatINR, formatDateDDMMYYYY } from '@/lib/formatters';
 
 interface Account {
   id: number;
@@ -68,6 +68,7 @@ export default function Transactions() {
   
   // Form state for auto-selecting type based on category
   const [transactionType, setTransactionType] = useState('Cash-Out');
+  const [isTypeDisabled, setIsTypeDisabled] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedEmployee, setSelectedEmployee] = useState('');
   const [selectedEmployeeName, setSelectedEmployeeName] = useState('');
@@ -183,6 +184,8 @@ export default function Transactions() {
   const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const category = e.target.value;
     setSelectedCategory(category);
+    
+    // Capital = Cash-in, everything else = Cash-out
     if (category === 'Capital') {
       setTransactionType('Cash-in');
     } else {
@@ -607,12 +610,13 @@ export default function Transactions() {
                     <select
                       name="type"
                       value={transactionType}
-                      onChange={(e) => setTransactionType(e.target.value)}
-                      className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+                      disabled
+                      className="mt-1 block w-full border-gray-300 rounded-md shadow-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                     >
                       <option>Cash-in</option>
                       <option>Cash-Out</option>
                     </select>
+                    <p className="text-xs text-gray-500 mt-1">Auto-set based on category</p>
                   </div>
 
                   <div>
@@ -633,9 +637,7 @@ export default function Transactions() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Date <span className="text-red-500">*</span>
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Date <span className="text-red-500">*</span> <span className="text-xs text-gray-400">(DD/MM/YYYY)</span></label>
                     <input
                       name="date"
                       type="date"
@@ -724,7 +726,7 @@ export default function Transactions() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Start Date <span className="text-xs text-gray-400">(DD/MM/YYYY)</span></label>
                     <input
                       type="date"
                       value={startDate}
@@ -733,7 +735,7 @@ export default function Transactions() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">End Date <span className="text-xs text-gray-400">(DD/MM/YYYY)</span></label>
                     <input
                       type="date"
                       value={endDate}
@@ -792,7 +794,8 @@ export default function Transactions() {
                         onClick={() => handleSort('date')}
                         className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                       >
-                        Date {sortBy === 'date' && (sortOrder === 'asc' ? '↑' : '↓')}
+                        <div>Date {sortBy === 'date' && (sortOrder === 'asc' ? '↑' : '↓')}</div>
+                        <div className="text-xs font-normal text-gray-400 normal-case">DD/MM/YYYY</div>
                       </th>
                       <th 
                         onClick={() => handleSort('description')}
@@ -848,7 +851,7 @@ export default function Transactions() {
                       transactions.map(t => (
                         <tr key={t.id}>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {new Date(t.date).toLocaleDateString()}
+                            {formatDateDDMMYYYY(t.date)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             {t.description || '-'}

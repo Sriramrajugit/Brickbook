@@ -4,7 +4,6 @@ import { getCurrentUser } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
-    // Get current user for multi-tenancy
     const user = await getCurrentUser()
     if (!user || !user.companyId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -12,25 +11,21 @@ export async function GET(request: NextRequest) {
 
     const companyId = user.companyId as number
     const { searchParams } = new URL(request.url)
-    const dateStr = searchParams.get('date')  // "2025-12-25"
+    const dateStr = searchParams.get('date')
     
     let whereClause: any = { companyId }
     if (dateStr) {
-      // ✅ FIX: Convert "2025-12-25" → Date object for Prisma DateTime
-      const date = new Date(dateStr + 'T00:00:00.000Z')
+      // Simple approach: just use the date string, Prisma will convert it
       whereClause.date = {
-        equals: date
+        gte: new Date(`${dateStr}T00:00:00Z`),
+        lt: new Date(`${dateStr}T23:59:59Z`)
       }
     }
     
     const attendances = await prisma.attendance.findMany({
       where: whereClause,
-      include: { 
-        employee: true 
-      },
-      orderBy: { 
-        date: 'desc' 
-      }
+      include: { employee: true },
+      orderBy: { date: 'desc' }
     })
     
     console.log(`📊 Found ${attendances.length} records for ${dateStr || 'all'}`)
@@ -43,77 +38,86 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // Get current user for multi-tenancy
-    const { getCurrentUser } = await import('@/lib/auth');
     const user = await getCurrentUser();
     if (!user || !user.companyId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const companyId = user.companyId as number;
-
     const { employeeId, date, status } = await request.json();
 
-    // Validate status is a valid numeric multiplier
-    const validStatuses: Record<string, number> = {
-      'Present': 1,
-      'OT4Hrs': 1.5,
-      'OT8Hrs': 2,
-      'Absent': 0
-    };
-
-    let numericStatus: number;
-    if (typeof status === 'number') {
-      // If already numeric, validate it's a valid value
-      numericStatus = status;
-    } else if (validStatuses[status]) {
-      // If string, convert to numeric
-      numericStatus = validStatuses[status];
-    } else {
+    // Basic validation
+    if (!employeeId || !date || status === undefined || status === null) {
       return NextResponse.json(
-        { error: 'Invalid attendance status' },
+        { error: 'Missing required fields' },
         { status: 400 }
       );
     }
 
-    // ✅ FIX: Convert date string to DateTime for POST too
-    const dateTime = new Date(date + 'T00:00:00.000Z');
-
-    // Validate: Future dates are not allowed
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const attendanceDate = new Date(dateTime);
-    attendanceDate.setHours(0, 0, 0, 0);
-
-    if (attendanceDate > today) {
-      return NextResponse.json(
-        { error: 'Future date attendance is not allowed' },
-        { status: 400 }
-      );
+    // Validate date format
+    if (!date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      return NextResponse.json({ error: 'Invalid date format' }, { status: 400 });
     }
 
-    const attendance = await prisma.attendance.upsert({
-      where: {
-        employeeId_date: {
-          employeeId: parseInt(employeeId),
-          date: dateTime // ✅ Use Date object
+    // Convert status to number if needed
+    const numericStatus = typeof status === 'number' ? status : parseFloat(status);
+    if (![0, 1, 1.5, 2].includes(numericStatus)) {
+      return NextResponse.json({ error: 'Invalid status value' }, { status: 400 });
+    }
+
+    // Parse employeeId
+    const empId = parseInt(employeeId, 10);
+    if (isNaN(empId)) {
+      return NextResponse.json({ error: 'Invalid employeeId' }, { status: 400 });
+    }
+
+    // Create date from string
+    const isoDate = `${date}T00:00:00.000Z`;
+
+    // Use raw SQL to insert to avoid Date object serialization issues
+    try {
+      // Try to find existing record first
+      const existing = await prisma.attendance.findFirst({
+        where: {
+          employeeId: empId,
+          companyId: companyId
         }
-      },
-      update: { status: numericStatus },
-      create: {
-        employeeId: parseInt(employeeId),
-        date: dateTime, // ✅ Use Date object
-        status: numericStatus,
-        companyId: companyId,
-        // siteId is not required in Attendance, but add if needed:
-        // siteId: user.siteId ?? undefined,
-      },
-      include: { employee: true }
-    });
+      });
 
-    return NextResponse.json(attendance, { status: 201 });
+      let attendance;
+      if (existing) {
+        // Update existing
+        attendance = await prisma.attendance.update({
+          where: { id: existing.id },
+          data: { status: numericStatus },
+          include: { employee: true }
+        });
+      } else {
+        // Create new using raw SQL to avoid Date serialization
+        await prisma.$executeRaw`
+          INSERT INTO "attendances" ("employeeId", "date", "status", "companyId")
+          VALUES (${empId}, ${isoDate}::timestamp, ${numericStatus}, ${companyId})
+        `;
+        
+        // Fetch the created record
+        attendance = await prisma.attendance.findFirst({
+          where: {
+            employeeId: empId,
+            companyId: companyId
+          },
+          include: { employee: true },
+          orderBy: { id: 'desc' }
+        });
+      }
+
+      return NextResponse.json(attendance, { status: 201 });
+    } catch (dbError) {
+      console.error('Database error:', dbError);
+      throw dbError;
+    }
   } catch (error) {
     console.error('❌ Error saving attendance:', error);
-    return NextResponse.json({ error: 'Failed to save attendance' }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ error: 'Failed to save attendance: ' + errorMessage }, { status: 500 });
   }
 }

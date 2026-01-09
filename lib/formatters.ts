@@ -23,3 +23,36 @@ export function formatIndianNumber(amount: number): string {
     maximumFractionDigits: 2,
   });
 }
+
+/**
+ * Format date as DD/MM/YYYY
+ * @param date - The date to format (string or Date object)
+ * @returns Formatted string in DD/MM/YYYY format
+ */
+export function formatDateDDMMYYYY(date: string | Date): string {
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  const day = String(dateObj.getDate()).padStart(2, '0');
+  const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const year = dateObj.getFullYear();
+  return `${day}/${month}/${year}`;
+}
+
+/**
+ * Convert DD/MM/YYYY to YYYY-MM-DD for input[type="date"]
+ * @param dateString - Date string in DD/MM/YYYY format
+ * @returns Formatted string in YYYY-MM-DD format
+ */
+export function convertDDMMYYYYtoYYYYMMDD(dateString: string): string {
+  const [day, month, year] = dateString.split('/');
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+/**
+ * Convert YYYY-MM-DD to DD/MM/YYYY
+ * @param dateString - Date string in YYYY-MM-DD format
+ * @returns Formatted string in DD/MM/YYYY format
+ */
+export function convertYYYYMMDDtoDDMMYYYY(dateString: string): string {
+  const [year, month, day] = dateString.split('-');
+  return `${day}/${month}/${year}`;
+}

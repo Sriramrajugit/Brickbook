@@ -1,3 +1,5 @@
+import 'account.dart';
+
 class Transaction {
   final int id;
   final double amount;
@@ -63,19 +65,5 @@ class Transaction {
       'date': date.toIso8601String().split('T')[0],
       'accountId': accountId,
     };
-  }
-}
-
-class Account {
-  final int id;
-  final String name;
-
-  Account({required this.id, required this.name});
-
-  factory Account.fromJson(Map<String, dynamic> json) {
-    return Account(
-      id: json['id'],
-      name: json['name'],
-    );
   }
 }

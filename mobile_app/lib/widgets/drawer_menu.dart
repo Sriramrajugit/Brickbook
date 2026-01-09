@@ -2,38 +2,50 @@ import 'package:flutter/material.dart';
 
 class DrawerMenu extends StatelessWidget {
   final String currentRoute;
+  final String? currentPage; // Alternative parameter name for flexibility
 
-  const DrawerMenu({super.key, required this.currentRoute});
+  const DrawerMenu({
+    super.key,
+    required this.currentRoute,
+    this.currentPage,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final activeRoute = currentPage ?? currentRoute;
+    
     return Drawer(
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
-          const DrawerHeader(
+          DrawerHeader(
             decoration: BoxDecoration(
-              color: Colors.blue,
+              color: Theme.of(context).colorScheme.primary,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 Text(
-                  'Ledger App',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  'Ledger',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
                 ),
-                SizedBox(height: 8),
+                const SizedBox(height: 4),
                 Text(
-                  'Expense Tracker',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
-                  ),
+                  'Financial Management',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.white70,
+                      ),
                 ),
               ],
             ),
@@ -43,42 +55,58 @@ class DrawerMenu extends StatelessWidget {
             icon: Icons.dashboard,
             title: 'Dashboard',
             route: '/',
+            isSelected: activeRoute == '/',
           ),
           _buildMenuItem(
             context,
             icon: Icons.account_balance,
             title: 'Accounts',
             route: '/accounts',
+            isSelected: activeRoute == '/accounts',
           ),
           _buildMenuItem(
             context,
             icon: Icons.people,
             title: 'Employees',
             route: '/employees',
+            isSelected: activeRoute == '/employees',
           ),
           _buildMenuItem(
             context,
             icon: Icons.receipt,
             title: 'Transactions',
             route: '/transactions',
+            isSelected: activeRoute == '/transactions',
           ),
           _buildMenuItem(
             context,
             icon: Icons.calendar_today,
             title: 'Attendance',
             route: '/attendance',
+            isSelected: activeRoute == '/attendance',
           ),
           _buildMenuItem(
             context,
             icon: Icons.payment,
             title: 'Payroll',
             route: '/payroll',
+            isSelected: activeRoute == '/payroll',
           ),
           _buildMenuItem(
             context,
             icon: Icons.bar_chart,
             title: 'Reports',
             route: '/reports',
+            isSelected: activeRoute == '/reports',
+          ),
+          const Divider(height: 24),
+          _buildMenuItem(
+            context,
+            icon: Icons.logout,
+            title: 'Logout',
+            route: '/login',
+            isSelected: false,
+            isLogout: true,
           ),
         ],
       ),
@@ -90,25 +118,41 @@ class DrawerMenu extends StatelessWidget {
     required IconData icon,
     required String title,
     required String route,
+    required bool isSelected,
+    bool isLogout = false,
   }) {
-    final bool isSelected = currentRoute == route;
     return ListTile(
       leading: Icon(
         icon,
-        color: isSelected ? Colors.blue : Colors.grey[700],
+        color: isSelected
+            ? Theme.of(context).colorScheme.primary
+            : Colors.grey[600],
       ),
       title: Text(
         title,
         style: TextStyle(
-          color: isSelected ? Colors.blue : Colors.grey[700],
-          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          color: isSelected
+              ? Theme.of(context).colorScheme.primary
+              : Colors.grey[800],
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
         ),
       ),
-      tileColor: isSelected ? Colors.blue.withOpacity(0.1) : null,
+      tileColor: isSelected
+          ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
+          : null,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       onTap: () {
         Navigator.pop(context); // Close drawer
         if (!isSelected) {
-          Navigator.pushReplacementNamed(context, route);
+          if (isLogout) {
+            // Handle logout
+            Navigator.pushNamedAndRemoveUntil(context, route, (route) => false);
+          } else {
+            Navigator.pushReplacementNamed(context, route);
+          }
         }
       },
     );
