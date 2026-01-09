@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Ledger - Financial Management",
+  title: "Brickbook - Financial Management",
   description: "Track your finances, employees, and payroll",
 };
 

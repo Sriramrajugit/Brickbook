@@ -52,7 +52,7 @@ export default function Navigation() {
         <div className="flex justify-between h-16">
           <div className="flex items-center">
             <div className="flex-shrink-0 flex flex-col items-start">
-              <h1 className="text-xl font-bold text-gray-800">Ledger</h1>
+              <h1 className="text-xl font-bold text-gray-800">Brickbook</h1>
             </div>
             <div className="hidden sm:ml-6 sm:flex sm:space-x-4">
               {navItems.map((item) => (
