@@ -1,3 +1,5 @@
+import 'employee.dart';
+
 class Attendance {
   final int id;
   final int employeeId;
@@ -45,19 +47,5 @@ class Attendance {
       default:
         return 'Unknown';
     }
-  }
-}
-
-class Employee {
-  final int id;
-  final String name;
-
-  Employee({required this.id, required this.name});
-
-  factory Employee.fromJson(Map<String, dynamic> json) {
-    return Employee(
-      id: json['id'],
-      name: json['name'],
-    );
   }
 }

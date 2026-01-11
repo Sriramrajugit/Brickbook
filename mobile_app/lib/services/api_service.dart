@@ -8,7 +8,7 @@ import '../models/attendance.dart';
 
 class ApiService {
   // Update this to your backend API URL
-  static const String baseUrl = 'http://192.168.0.102:3000/api';
+  static const String baseUrl = 'http://192.168.1.15:3000/api';
   
   // Companies
   static Future<List<Company>> getCompanies() async {
@@ -124,6 +124,24 @@ class ApiService {
       final error = json.decode(response.body);
       throw Exception(error['error'] ?? 'Failed to mark attendance');
     }
+  }
+
+  // Payroll
+  static Future<List<Map<String, dynamic>>> getPayroll({
+    required int employeeId,
+    required int accountId,
+    required String fromDate,
+    required String toDate,
+  }) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/payroll?employeeId=$employeeId&fromDate=$fromDate&toDate=$toDate'),
+    );
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> result = json.decode(response.body);
+      final List<dynamic> data = result['data'] ?? [];
+      return data.cast<Map<String, dynamic>>();
+    }
+    throw Exception('Failed to load payroll');
   }
 }
 

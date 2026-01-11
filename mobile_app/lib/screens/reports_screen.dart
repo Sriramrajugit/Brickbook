@@ -62,10 +62,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
       
       // Filter transactions
       final filtered = transactionList.where((t) {
-        final tDate = DateTime.parse(t.date);
         return t.accountId == selectedAccount!.id &&
-            tDate.isAfter(startDate!) &&
-            tDate.isBefore(endDate!.add(const Duration(days: 1)));
+            t.date.isAfter(startDate!) &&
+            t.date.isBefore(endDate!.add(const Duration(days: 1)));
       }).toList();
 
       setState(() {
@@ -278,7 +277,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                 cells: [
                                   DataCell(
                                     Text(
-                                      DateTime.parse(t.date)
+                                      t.date
                                           .toLocal()
                                           .toString()
                                           .split(' ')[0],

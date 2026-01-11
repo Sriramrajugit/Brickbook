@@ -125,10 +125,10 @@ class _AccountsScreenState extends State<AccountsScreen> {
                         'Created: ${DateFormat('MMM d, yyyy').format(account.createdAt)}',
                       ),
                       trailing: Text(
-                        currencyFormat.format(account.balance),
+                        currencyFormat.format(account.budget),
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          color: account.balance >= 0 ? Colors.green : Colors.red,
+                          color: account.budget >= 0 ? Colors.green : Colors.red,
                           fontSize: 16,
                         ),
                       ),

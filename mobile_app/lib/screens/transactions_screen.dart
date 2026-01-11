@@ -68,9 +68,12 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         description: _descriptionController.text,
         category: _selectedCategory,
         type: _selectedType,
-        date: DateFormat('yyyy-MM-dd').format(_selectedDate),
+        date: _selectedDate,
         accountId: _selectedAccountId!,
         paymentMode: 'G-Pay',
+        companyId: 1,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
       );
 
       await OfflineApiService.createTransaction(transaction);
@@ -217,6 +220,9 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                         name: 'Unknown',
                         type: '',
                         budget: 0,
+                        companyId: 1,
+                        createdAt: DateTime.now(),
+                        updatedAt: DateTime.now(),
                       ),
                     );
 

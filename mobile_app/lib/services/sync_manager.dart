@@ -79,9 +79,12 @@ class SyncManager {
             description: txMap['description'],
             category: txMap['category'],
             type: txMap['type'],
-            date: txMap['date'],
+            date: DateTime.parse(txMap['date']),
             accountId: txMap['accountId'],
             paymentMode: txMap['paymentMode'],
+            companyId: txMap['companyId'] ?? 1,
+            createdAt: DateTime.parse(txMap['createdAt'] ?? DateTime.now().toIso8601String()),
+            updatedAt: DateTime.now(),
           );
 
           // Upload to server

@@ -1,6 +1,6 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
-import '../models/transaction.dart';
+import '../models/transaction.dart' as models;
 import '../models/employee.dart';
 import '../models/account.dart';
 
@@ -77,30 +77,30 @@ class LocalDatabase {
   }
 
   // TRANSACTIONS
-  Future<List<Transaction>> getLocalTransactions() async {
+  Future<List<models.Transaction>> getLocalTransactions() async {
     final db = await database;
     final List<Map<String, dynamic>> maps = await db.query(
       'transactions',
       orderBy: 'date DESC',
     );
     return List.generate(maps.length, (i) {
-      return Transaction(
+      return models.Transaction(
         id: maps[i]['serverId'] ?? maps[i]['id'],
         amount: maps[i]['amount'],
         description: maps[i]['description'],
         category: maps[i]['category'],
         type: maps[i]['type'],
-        date: maps[i]['date'],
+        date: DateTime.parse(maps[i]['date']),
         accountId: maps[i]['accountId'],
         paymentMode: maps[i]['paymentMode'],
         companyId: maps[i]['companyId'] ?? 1,
-        createdAt: DateTime.now(),
+        createdAt: DateTime.parse(maps[i]['createdAt'] ?? DateTime.now().toIso8601String()),
         updatedAt: DateTime.now(),
       );
     });
   }
 
-  Future<int> insertTransaction(Transaction transaction) async {
+  Future<int> insertTransaction(models.Transaction transaction) async {
     final db = await database;
     return await db.insert('transactions', {
       'amount': transaction.amount,
@@ -172,6 +172,9 @@ class LocalDatabase {
         name: maps[i]['name'],
         type: maps[i]['type'],
         budget: maps[i]['budget'],
+        companyId: 1,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
       );
     });
   }
@@ -194,7 +197,7 @@ class LocalDatabase {
     await db.delete('accounts');
   }
 
-  Future<void> saveServerData(List<Transaction> transactions, 
+  Future<void> saveServerData(List<models.Transaction> transactions, 
       List<Employee> employees, List<Account> accounts) async {
     final db = await database;
     
@@ -210,7 +213,7 @@ class LocalDatabase {
         'description': transaction.description,
         'category': transaction.category,
         'type': transaction.type,
-        'date': transaction.date,
+        'date': transaction.date.toIso8601String(),
         'accountId': transaction.accountId,
         'paymentMode': transaction.paymentMode,
         'synced': 1,

@@ -32,10 +32,13 @@ class _PayrollScreenState extends State<PayrollScreen> {
 
   Future<void> fetchInitialData() async {
     try {
-      final [employeeList, accountList] = await Future.wait([
+      final results = await Future.wait([
         ApiService.getEmployees(),
         ApiService.getAccounts(),
       ]);
+      
+      final employeeList = results[0] as List<Employee>;
+      final accountList = results[1] as List<Account>;
 
       setState(() {
         employees = employeeList;
@@ -78,7 +81,8 @@ class _PayrollScreenState extends State<PayrollScreen> {
       );
 
       setState(() {
-        payrollRecords = records;
+        // Convert maps to PayrollRecord objects
+        payrollRecords = records.map((r) => PayrollRecord.fromJson(r)).toList();
       });
 
       if (mounted) {
@@ -110,7 +114,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
         title: const Text('Payroll'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
-      drawer: const DrawerMenu(currentPage: '/payroll'),
+      drawer: const DrawerMenu(currentRoute: '/payroll'),
       body: loading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(

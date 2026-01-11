@@ -36,7 +36,7 @@ class OfflineApiService {
   static Future<Transaction> createTransaction(Transaction transaction) async {
     // Always save locally first
     final localId = await _localDb.insertTransaction(transaction);
-    transaction = Transaction(
+    final updatedTx = Transaction(
       id: localId,
       amount: transaction.amount,
       description: transaction.description,
@@ -45,22 +45,25 @@ class OfflineApiService {
       date: transaction.date,
       accountId: transaction.accountId,
       paymentMode: transaction.paymentMode,
+      companyId: transaction.companyId,
+      createdAt: transaction.createdAt,
+      updatedAt: transaction.updatedAt,
     );
 
     if (await isOnline()) {
       try {
         // Try to sync to server immediately
-        final serverTransaction = await ApiService.createTransaction(transaction);
-        await _localDb.markTransactionSynced(localId, serverTransaction.id!);
+        final serverTransaction = await ApiService.createTransaction(updatedTx);
+        await _localDb.markTransactionSynced(localId, serverTransaction.id);
         return serverTransaction;
       } catch (e) {
         print('Failed to sync immediately, will sync later: $e');
-        return transaction;
+        return updatedTx;
       }
     } else {
       // Offline - will sync later
       print('Offline: Transaction saved locally, will sync when online');
-      return transaction;
+      return updatedTx;
     }
   }
 
@@ -88,6 +91,8 @@ class OfflineApiService {
       etype: 'Full-time',
       salary: salary,
       status: 'Active',
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
     );
     
     final localId = await _localDb.insertEmployee(employee);
@@ -104,6 +109,8 @@ class OfflineApiService {
           etype: 'Full-time',
           salary: salary,
           status: 'Active',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
         );
       }
     } else {
@@ -113,6 +120,8 @@ class OfflineApiService {
         etype: 'Full-time',
         salary: salary,
         status: 'Active',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
       );
     }
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../models/company.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '../services/api_service.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -13,45 +14,18 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController userIdController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   
-  List<Company> companies = [];
-  Company? selectedCompany;
   bool isLoading = false;
-  bool isLoadingCompanies = true;
   String errorMessage = '';
 
   @override
   void initState() {
     super.initState();
-    loadCompanies();
-  }
-
-  Future<void> loadCompanies() async {
-    try {
-      setState(() => isLoadingCompanies = true);
-      final companiesList = await ApiService.getCompanies();
-      setState(() {
-        companies = companiesList;
-        if (companiesList.isNotEmpty) {
-          selectedCompany = companiesList.first;
-        }
-        isLoadingCompanies = false;
-      });
-    } catch (e) {
-      setState(() {
-        errorMessage = 'Failed to load companies: ${e.toString()}';
-        isLoadingCompanies = false;
-      });
-    }
+    // No need to load companies - company is determined from user's profile
   }
 
   Future<void> handleLogin() async {
     if (userIdController.text.isEmpty || passwordController.text.isEmpty) {
       setState(() => errorMessage = 'Please enter both User ID and password');
-      return;
-    }
-
-    if (selectedCompany == null) {
-      setState(() => errorMessage = 'Please select a company');
       return;
     }
 
@@ -61,19 +35,30 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      // Call login API endpoint
-      // This is a placeholder - implement based on your backend
-      // For now, we'll store the company selection and navigate
-      
-      // TODO: Implement actual login API call
-      // For testing, we'll just navigate to dashboard
-      
-      if (!mounted) return;
-      
-      Navigator.of(context).pushReplacementNamed('/');
+      // Call login API endpoint - matches web login flow
+      final response = await http.post(
+        Uri.parse('${ApiService.baseUrl}/login'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'userId': userIdController.text,
+          'password': passwordController.text,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        // Login successful - company auto-selected from user's profile
+        if (!mounted) return;
+        Navigator.of(context).pushReplacementNamed('/');
+      } else {
+        final error = json.decode(response.body);
+        setState(() {
+          errorMessage = error['error'] ?? 'Login failed';
+          isLoading = false;
+        });
+      }
     } catch (e) {
       setState(() {
-        errorMessage = 'Login failed: ${e.toString()}';
+        errorMessage = 'Connection error: ${e.toString()}';
         isLoading = false;
       });
     }
@@ -122,36 +107,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 
                 const SizedBox(height: 40),
                 
-                // Company Selection
-                if (!isLoadingCompanies) ...[
-                  Text(
-                    'Select Company',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 8),
-                  DropdownButtonFormField<Company>(
-                    value: selectedCompany,
-                    items: companies.map((company) {
-                      return DropdownMenuItem(
-                        value: company,
-                        child: Text(company.name),
-                      );
-                    }).toList(),
-                    onChanged: (Company? newValue) {
-                      setState(() => selectedCompany = newValue);
-                    },
-                    decoration: InputDecoration(
-                      hintText: 'Choose your company',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      filled: true,
-                      fillColor: Colors.grey[50],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                ],
-                
                 // User ID
                 Text(
                   'User ID or Email',
@@ -160,6 +115,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 8),
                 TextField(
                   controller: userIdController,
+                  keyboardType: TextInputType.emailAddress,
+                  textInputAction: TextInputAction.next,
                   decoration: InputDecoration(
                     hintText: 'Enter your user ID or email',
                     border: OutlineInputBorder(
