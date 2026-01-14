@@ -76,11 +76,13 @@ export async function POST(request: NextRequest) {
 
     // Use raw SQL to insert to avoid Date object serialization issues
     try {
-      // Try to find existing record first
+      // Try to find existing record first - MUST include date to find specific record
+      const existingDate = new Date(`${date}T00:00:00.000Z`);
       const existing = await prisma.attendance.findFirst({
         where: {
           employeeId: empId,
-          companyId: companyId
+          companyId: companyId,
+          date: existingDate
         }
       });
 
