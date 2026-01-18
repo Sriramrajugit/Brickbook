@@ -117,11 +117,11 @@ export async function POST(req: NextRequest) {
 
     const amount = Number(body.amount);
     const accountId = Number(body.accountId);
-    const type = (body.type as string) || 'Expense';
+    const type = (body.type as string) || 'Cash-Out';
 
-    if (!amount || isNaN(amount)) {
+    if (!amount || isNaN(amount) || amount <= 0) {
       return NextResponse.json(
-        { error: 'Amount is required and must be a number' },
+        { error: 'Amount is required and must be a positive number' },
         { status: 400 },
       );
     }
@@ -129,6 +129,20 @@ export async function POST(req: NextRequest) {
     if (!body.date) {
       return NextResponse.json(
         { error: 'Date is required' },
+        { status: 400 },
+      );
+    }
+
+    if (!body.category) {
+      return NextResponse.json(
+        { error: 'Category is required' },
+        { status: 400 },
+      );
+    }
+
+    if (!accountId || isNaN(accountId)) {
+      return NextResponse.json(
+        { error: 'Account is required' },
         { status: 400 },
       );
     }
@@ -180,8 +194,10 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(tx, { status: 201 });
   } catch (err) {
+    console.error('❌ Transaction Creation Error:', err);
+    const errorMessage = err instanceof Error ? err.message : String(err);
     return NextResponse.json(
-      { error: 'Failed to create transaction' },
+      { error: `Failed to create transaction: ${errorMessage}` },
       { status: 500 },
     );
   }

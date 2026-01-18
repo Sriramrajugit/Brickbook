@@ -185,9 +185,9 @@ export default function Transactions() {
     const category = e.target.value;
     setSelectedCategory(category);
     
-    // Capital = Cash-in, everything else = Cash-out
+    // Capital = Cash-In, everything else = Cash-Out
     if (category === 'Capital') {
-      setTransactionType('Cash-in');
+      setTransactionType('Cash-In');
     } else {
       setTransactionType('Cash-Out');
     }
@@ -287,6 +287,11 @@ export default function Transactions() {
     }
 
     try {
+      // Get the transaction details before deletion
+      const txRes = await fetch(`/api/transactions?id=${id}`);
+      const txData = txRes.ok ? await txRes.json() : null;
+      const transaction = txData?.data?.find((t: any) => t.id === id);
+      
       const res = await fetch(`/api/transactions/${id}`, {
         method: 'DELETE',
       });
@@ -294,6 +299,34 @@ export default function Transactions() {
       if (!res.ok) {
         const error = await res.json();
         throw new Error(error.error || 'Failed to delete transaction');
+      }
+
+      // If it's a Salary Advance, also delete the corresponding Advance record
+      if (transaction?.category === 'Salary Advance') {
+        try {
+          const advancesRes = await fetch('/api/advances');
+          if (advancesRes.ok) {
+            const advancesData = await advancesRes.json();
+            const matchingAdvance = advancesData.find(
+              (adv: any) => {
+                const advDate = new Date(adv.date).toDateString();
+                const txDate = new Date(transaction.date).toDateString();
+                const amountsMatch = Math.abs(Number(adv.amount) - Number(transaction.amount)) < 0.01;
+                return amountsMatch && advDate === txDate;
+              }
+            );
+            
+            if (matchingAdvance) {
+              await fetch('/api/advances', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: matchingAdvance.id }),
+              });
+            }
+          }
+        } catch (advErr) {
+          console.error('Error deleting associated advance:', advErr);
+        }
       }
 
       alert('Transaction deleted successfully!');
@@ -352,23 +385,28 @@ export default function Transactions() {
       const method = isEditMode ? 'PUT' : 'POST';
       const url = isEditMode ? `/api/transactions/${editingTransactionId}` : '/api/transactions';
       
+      const bodyData = {
+        amount: parseFloat(data.amount as string),
+        description: data.description as string || null,
+        category: data.category as string,
+        type: transactionType,
+        paymentMode: data.paymentMode as string,
+        date: data.date as string,
+        accountId: Number(data.accountId as string),
+      };
+
+      console.log('📤 Sending transaction data:', bodyData);
+      
       // POST or PUT to API to save to database
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: parseFloat(data.amount as string),
-          description: data.description as string || null,
-          category: data.category as string,
-          type: data.type as string,
-          paymentMode: data.paymentMode as string,
-          date: data.date as string,
-          accountId: Number(data.accountId as string),
-        }),
+        body: JSON.stringify(bodyData),
       });
 
       if (!res.ok) {
         const error = await res.json();
+        console.error('❌ API Error Response:', error);
         throw new Error(error.error || 'Failed to save transaction');
       }
 
@@ -377,7 +415,7 @@ export default function Transactions() {
       // Store edit mode state before resetting
       const wasEditMode = isEditMode;
       
-      // Handle Advance record updates/creation
+      // Handle Advance record updates/creation for Salary Advance
       if ((data.category === 'Salary Advance' || data.category === 'Salary') && selectedEmployee) {
         try {
           const advancesRes = await fetch('/api/advances');
@@ -385,9 +423,8 @@ export default function Transactions() {
             const advancesData = await advancesRes.json();
             
             if (wasEditMode) {
-              // In edit mode: First delete the old advance record(s) for this employee on this date
-              // This prevents duplicates when amount or date changes
-              const oldAdvancesToDelete = advancesData.filter(
+              // In edit mode: Find and delete the old advance record for this employee and transaction date
+              const oldAdvance = advancesData.find(
                 (adv: any) => {
                   const advDate = new Date(adv.date).toDateString();
                   const txDate = new Date(data.date as string).toDateString();
@@ -395,21 +432,21 @@ export default function Transactions() {
                 }
               );
               
-              // Delete old advance records
-              for (const oldAdv of oldAdvancesToDelete) {
+              // Delete old advance if found
+              if (oldAdvance) {
                 try {
                   await fetch('/api/advances', {
                     method: 'DELETE',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id: oldAdv.id }),
+                    body: JSON.stringify({ id: oldAdvance.id }),
                   });
                 } catch (delErr) {
-                  // Silent error handling
+                  console.error('Error deleting old advance:', delErr);
                 }
               }
               
-              // Now create a new advance record with the updated details
-              const createRes = await fetch('/api/advances', {
+              // Create new advance record with updated details
+              await fetch('/api/advances', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -419,12 +456,8 @@ export default function Transactions() {
                   date: data.date as string,
                 }),
               });
-              
-              if (createRes.ok) {
-                // Success
-              }
             } else {
-              // New transaction - create advance record
+              // New transaction - create new advance record
               await fetch('/api/advances', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -613,7 +646,7 @@ export default function Transactions() {
                       disabled
                       className="mt-1 block w-full border-gray-300 rounded-md shadow-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                     >
-                      <option>Cash-in</option>
+                      <option>Cash-In</option>
                       <option>Cash-Out</option>
                     </select>
                     <p className="text-xs text-gray-500 mt-1">Auto-set based on category</p>
