@@ -47,6 +47,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.1.1",
+    "local-ssl-proxy": "^2.0.5",
     "rimraf": "^6.1.2",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",

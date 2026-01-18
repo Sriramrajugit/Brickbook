@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
       maxAge: 24*60*60,
       path: '/',
       sameSite: 'lax',
-      secure: false // Set to false for localhost
+      secure: process.env.NODE_ENV === 'production' || process.env.NEXTAUTH_URL?.startsWith('https')
     })
     
     return response
