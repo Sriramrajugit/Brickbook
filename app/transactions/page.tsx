@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import MobileNav from '../components/MobileNav';
+import ProfileMenu from '../components/ProfileMenu';
 import { useAuth } from '../components/AuthProvider';
 import { formatINR, formatDateDDMMYYYY } from '@/lib/formatters';
 
 interface Account {
   id: number;
   name: string;
+  siteId?: number | null;
 }
 
 interface Category {
@@ -70,6 +72,7 @@ export default function Transactions() {
   const [transactionType, setTransactionType] = useState('Cash-Out');
   const [isTypeDisabled, setIsTypeDisabled] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState('');
   const [selectedEmployeeName, setSelectedEmployeeName] = useState('');
   const [selectedAccount, setSelectedAccount] = useState('');
@@ -182,11 +185,15 @@ export default function Transactions() {
 
   // Handle category change to auto-set type
   const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const category = e.target.value;
-    setSelectedCategory(category);
+    const categoryName = e.target.value;
+    setSelectedCategory(categoryName);
+    
+    // Find the category ID from categories array
+    const category = categories.find(cat => cat.name === categoryName);
+    setSelectedCategoryId(category?.id || null);
     
     // Capital = Cash-In, everything else = Cash-Out
-    if (category === 'Capital') {
+    if (categoryName === 'Capital') {
       setTransactionType('Cash-In');
     } else {
       setTransactionType('Cash-Out');
@@ -199,6 +206,11 @@ export default function Transactions() {
     setIsEditMode(true);
     setEditingTransactionId(transaction.id);
     setSelectedCategory(transaction.category);
+    
+    // Find and set the category ID from categories array
+    const category = categories.find(cat => cat.name === transaction.category);
+    setSelectedCategoryId(category?.id || null);
+    
     setTransactionType(transaction.type);
     setFormAmount(transaction.amount.toString());
     setFormDescription(transaction.description || '');
@@ -272,6 +284,7 @@ export default function Transactions() {
     setIsEditMode(false);
     setEditingTransactionId(null);
     setSelectedCategory('');
+    setSelectedCategoryId(null);
     setSelectedEmployee('');
     setSelectedEmployeeName('');
     setTransactionType('Cash-Out');
@@ -389,6 +402,7 @@ export default function Transactions() {
         amount: parseFloat(data.amount as string),
         description: data.description as string || null,
         category: data.category as string,
+        categoryId: selectedCategoryId || null,
         type: transactionType,
         paymentMode: data.paymentMode as string,
         date: data.date as string,
@@ -477,6 +491,7 @@ export default function Transactions() {
       
       // Reset form and edit mode
       setSelectedCategory('');
+      setSelectedCategoryId(null);
       setSelectedEmployee('');
       setSelectedEmployeeName('');
       setIsEditMode(false);
@@ -522,11 +537,14 @@ export default function Transactions() {
       {/* Main Content */}
       <div className="flex-1 lg:ml-0 pt-16 lg:pt-0">
         <header className="bg-white shadow">
-          <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
             <h1 className="text-3xl font-bold text-gray-900 flex items-center">
               <span className="mr-3 text-red-600">📝</span>
               Transactions
             </h1>
+            <div className="hidden lg:block">
+              <ProfileMenu />
+            </div>
           </div>
         </header>
 

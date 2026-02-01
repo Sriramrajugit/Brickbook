@@ -9,9 +9,29 @@ export default function Navigation() {
   const pathname = usePathname()
   const { logout, user } = useAuth()
   const [companyName, setCompanyName] = useState<string>('')
+  const [isHydrated, setIsHydrated] = useState(false)
+  const [openMenus, setOpenMenus] = useState<{ [key: string]: boolean }>({})
+
+  // Initialize from localStorage on mount (client-side only)
+  useEffect(() => {
+    if (user?.companyId) {
+      const cached = localStorage.getItem(`company_${user.companyId}`)
+      if (cached) {
+        setCompanyName(cached)
+      }
+    }
+    setIsHydrated(true)
+  }, [user?.companyId])
 
   useEffect(() => {
     if (!user?.companyId) return
+
+    // Try to get from localStorage first
+    const cached = localStorage.getItem(`company_${user.companyId}`)
+    if (cached) {
+      setCompanyName(cached)
+      return
+    }
 
     const fetchCompanyName = async () => {
       try {
@@ -21,6 +41,8 @@ export default function Navigation() {
           const company = companies.find((c: any) => c.id === user.companyId)
           if (company) {
             setCompanyName(company.name)
+            // Cache in localStorage
+            localStorage.setItem(`company_${user.companyId}`, company.name)
           }
         }
       } catch (err) {
@@ -35,7 +57,14 @@ export default function Navigation() {
     await logout()
   }
 
-  const navItems = [
+  const toggleMenu = (menuName: string) => {
+    setOpenMenus(prev => ({
+      ...prev,
+      [menuName]: !prev[menuName]
+    }))
+  }
+
+  const mainNavItems = [
     { href: '/', label: 'Dashboard' },
     { href: '/transactions', label: 'Transactions' },
     { href: '/accounts', label: 'Accounts' },
@@ -44,7 +73,15 @@ export default function Navigation() {
     { href: '/attendance', label: 'Attendance' },
     { href: '/payroll', label: 'Payroll' },
     { href: '/reports', label: 'Reports' },
+    { href: '/users', label: 'Users' },
   ]
+
+  const masterMenus = {
+    inventory: [
+      { href: '/inventory/items', label: 'Items' },
+      { href: '/inventory/suppliers', label: 'Suppliers' },
+    ]
+  }
 
   return (
     <nav className="bg-white shadow-md">
@@ -54,8 +91,8 @@ export default function Navigation() {
             <div className="flex-shrink-0 flex flex-col items-start">
               <h1 className="text-xl font-bold text-gray-800">Brickbook</h1>
             </div>
-            <div className="hidden sm:ml-6 sm:flex sm:space-x-4">
-              {navItems.map((item) => (
+            <div className="hidden sm:ml-6 sm:flex sm:space-x-1">
+              {mainNavItems.map((item) => (
                 <a
                   key={item.href}
                   href={item.href}
@@ -68,12 +105,54 @@ export default function Navigation() {
                   {item.label}
                 </a>
               ))}
+              
+              {/* Master Menu with Dropdown */}
+              <div className="relative group">
+                <button
+                  onClick={() => toggleMenu('master')}
+                  className="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 hover:text-blue-600 group-hover:text-blue-600"
+                >
+                  Masters
+                  <svg className="ml-1 w-4 h-4 transition-transform group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                  </svg>
+                </button>
+                
+                {/* Master Submenu - Inventory */}
+                <div className="absolute left-0 mt-0 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
+                  <div className="py-1">
+                    <span className="block px-4 py-2 text-sm font-semibold text-gray-700 border-b">📦 Inventory</span>
+                    {masterMenus.inventory.map((item) => (
+                      <a
+                        key={item.href}
+                        href={item.href}
+                        className={`block px-4 py-2 text-sm ${
+                          pathname === item.href
+                            ? 'text-blue-600 bg-blue-50'
+                            : 'text-gray-700 hover:bg-gray-100'
+                        }`}
+                      >
+                        {item.label}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-4">
-            {user && (
-              <div className="text-sm font-semibold text-blue-700 bg-blue-50 px-3 py-1 rounded">
-                {companyName || `Company ${user.companyId}`}
+            {isHydrated && user && companyName && (
+              <div className="flex flex-col items-end">
+                <div className="text-xs text-gray-500 font-medium">Organization</div>
+                <div className="text-sm font-semibold text-blue-700">{companyName}</div>
+                <div className="text-xs text-gray-600 mt-1">
+                  <a 
+                    href="/profile" 
+                    className="text-blue-600 hover:text-blue-700 hover:underline font-medium"
+                  >
+                    {user.name || user.email} →
+                  </a>
+                </div>
               </div>
             )}
             <button

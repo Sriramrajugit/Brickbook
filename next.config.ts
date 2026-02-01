@@ -2,11 +2,8 @@
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  outputFileTracingRoot: __dirname,  // For non-Turbopack
-  // turbopack: { root: __dirname },  // If using Turbopack
+  outputFileTracingRoot: __dirname,
 };
-module.exports = nextConfig;
-
 
 export default nextConfig; 
 

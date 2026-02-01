@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
         id: true,
         name: true,
         salary: true,
+        salaryFrequency: true,
       },
     })
 
@@ -47,12 +48,19 @@ export async function GET(request: NextRequest) {
           },
         })
 
-        // Calculate gross salary based on attendance multiplier
-        // Simply multiply daily salary by the attendance status value
-        const dailySalary = emp.salary || 0
-        const grossSalary = attendance.reduce((sum: number, record: any) => {
-          return sum + (dailySalary * record.status)
-        }, 0)
+        // Calculate gross salary based on salary frequency
+        let grossSalary = 0
+        
+        if (emp.salaryFrequency === 'D') {
+          // Daily Employee: Salary based on attendance (no of days * daily rate + OT)
+          const dailySalary = emp.salary || 0
+          grossSalary = attendance.reduce((sum: number, record: any) => {
+            return sum + (dailySalary * record.status)
+          }, 0)
+        } else {
+          // Monthly Employee: Fixed monthly salary
+          grossSalary = emp.salary || 0
+        }
 
         // Sum advances for this employee in the period from Advance table
         const advancesData = await prisma.advance.aggregate({
@@ -79,8 +87,9 @@ export async function GET(request: NextRequest) {
         return {
           employeeId: emp.id,
           employeeName: emp.name,
-          baseSalary: emp.salary || 0, // Base daily salary from employee record
-          salary: grossSalary, // Calculated gross salary based on attendance multipliers
+          salaryFrequency: emp.salaryFrequency,
+          baseSalary: emp.salary || 0, // Base daily/monthly salary from employee record
+          salary: grossSalary, // Calculated gross salary
           attendance,
           totalAdvance: totalAdvance || 0,
           totalSalaryPaid: salaryTx._sum.amount || 0,

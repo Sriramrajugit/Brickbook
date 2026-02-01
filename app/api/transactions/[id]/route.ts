@@ -40,6 +40,7 @@ export async function PUT(
         amount,
         description: body.description || null,
         category: body.category || 'Other',
+        categoryId: body.categoryId ? Number(body.categoryId) : null,
         type: body.type || 'Cash-Out',
         paymentMode: body.paymentMode || 'G-Pay',
         date: new Date(body.date),

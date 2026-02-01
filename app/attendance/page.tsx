@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import MobileNav from '../components/MobileNav'
+import ProfileMenu from '../components/ProfileMenu'
 import { useAuth } from '../components/AuthProvider'
 
 interface Employee {
@@ -174,8 +175,11 @@ export default function Attendance() {
       {/* Main Content */}
       <div className="flex-1 lg:ml-0 pt-16 lg:pt-0">
         <header className="bg-white shadow">
-          <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
             <h1 className="text-3xl font-bold text-gray-900">Attendance</h1>
+            <div className="hidden lg:block">
+              <ProfileMenu />
+            </div>
           </div>
         </header>
 

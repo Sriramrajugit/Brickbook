@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
         name: true,
         etype: true,
         salary: true,
+        salaryFrequency: true,
         status: true,
         createdAt: true,
         updatedAt: true,
@@ -49,13 +50,16 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, etype, salary, status } = body;
+    const { name, etype, salary, salaryFrequency, status } = body;
+
+    console.log('📥 API received:', { name, etype, salary, salaryFrequency, status });
 
     const employee = await prisma.employee.create({
       data: {
         name,
         etype,
         salary: salary ? parseFloat(salary) : null,
+        salaryFrequency: salaryFrequency || 'M',  // Already M or D from frontend
         status,
         companyId: user.companyId,
       },
@@ -64,12 +68,14 @@ export async function POST(request: NextRequest) {
         name: true,
         etype: true,
         salary: true,
+        salaryFrequency: true,
         status: true,
         createdAt: true,
         updatedAt: true,
       },
     });
 
+    console.log('✅ Created employee:', employee);
     return NextResponse.json(employee, { status: 201 });
   } catch (error) {
     console.error('Error creating employee:', error);
@@ -93,11 +99,13 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { id, name, etype, salary, status } = body
+    const { id, name, etype, salary, salaryFrequency, status } = body
 
     if (!id) {
       return NextResponse.json({ error: 'Employee ID is required' }, { status: 400 });
     }
+
+    console.log('📥 API received for update:', { id, name, etype, salary, salaryFrequency, status });
 
     const employee = await prisma.employee.update({
       where: { id: parseInt(id) },
@@ -105,6 +113,7 @@ export async function PUT(request: NextRequest) {
         name,
         etype,
         salary: salary ? parseFloat(salary) : null,
+        salaryFrequency: salaryFrequency || 'M',  // Already M or D from frontend
         status,
       },
       select: {
@@ -112,12 +121,14 @@ export async function PUT(request: NextRequest) {
         name: true,
         etype: true,
         salary: true,
+        salaryFrequency: true,
         status: true,
         createdAt: true,
         updatedAt: true,
       },
     });
 
+    console.log('✅ Updated employee:', employee);
     return NextResponse.json(employee)
   } catch (error) {
     console.error('Error updating employee:', error)

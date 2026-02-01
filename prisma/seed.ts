@@ -206,6 +206,196 @@ async function main() {
   }
 
   console.log(`${categories.length} categories created/updated`)
+
+  // Create Accounts
+  const account1 = await prisma.account.upsert({
+    where: { id: 1 },
+    update: { name: 'Main Account', type: 'General', budget: 500000, companyId: company.id },
+    create: {
+      id: 1,
+      name: 'Main Account',
+      type: 'General',
+      budget: 500000,
+      companyId: company.id,
+      siteId: site1.id,
+    },
+  })
+
+  const account2 = await prisma.account.upsert({
+    where: { id: 2 },
+    update: { name: 'Site A Account', type: 'Project', budget: 300000, companyId: company.id },
+    create: {
+      id: 2,
+      name: 'Site A Account',
+      type: 'Project',
+      budget: 300000,
+      companyId: company.id,
+      siteId: site2.id,
+    },
+  })
+
+  console.log('2 accounts created/updated')
+
+  // Create Employees
+  const emp1 = await prisma.employee.upsert({
+    where: { id: 1 },
+    update: { name: 'John Doe', etype: 'Labour', salary: 15000, companyId: company.id },
+    create: {
+      id: 1,
+      name: 'John Doe',
+      etype: 'Labour',
+      salary: 15000,
+      status: 'Active',
+      companyId: company.id,
+    },
+  })
+
+  const emp2 = await prisma.employee.upsert({
+    where: { id: 2 },
+    update: { name: 'Jane Smith', etype: 'Supervisor', salary: 25000, companyId: company.id },
+    create: {
+      id: 2,
+      name: 'Jane Smith',
+      etype: 'Supervisor',
+      salary: 25000,
+      status: 'Active',
+      companyId: company.id,
+    },
+  })
+
+  console.log('2 employees created/updated')
+
+  // Create Sample Transactions
+  const txnCategory = await prisma.category.findFirst({
+    where: { name: 'Material cost', companyId: company.id },
+  })
+
+  const salaryCategory = await prisma.category.findFirst({
+    where: { name: 'Salary', companyId: company.id },
+  })
+
+  if (txnCategory) {
+    await prisma.transaction.upsert({
+      where: { id: 1 },
+      update: {
+        amount: 50000,
+        description: 'Purchase of materials',
+        category: 'Material cost',
+        type: 'Cash-Out',
+        date: new Date('2026-01-10'),
+      },
+      create: {
+        id: 1,
+        amount: 50000,
+        description: 'Purchase of materials',
+        category: 'Material cost',
+        categoryId: txnCategory.id,
+        type: 'Cash-Out',
+        paymentMode: 'Bank Transfer',
+        date: new Date('2026-01-10'),
+        accountId: account1.id,
+        createdBy: owner.id,
+        companyId: company.id,
+        siteId: site1.id,
+      },
+    })
+  }
+
+  if (salaryCategory) {
+    await prisma.transaction.upsert({
+      where: { id: 2 },
+      update: {
+        amount: 15000,
+        description: 'Salary payment',
+        category: 'Salary',
+        type: 'Cash-Out',
+        date: new Date('2026-01-13'),
+      },
+      create: {
+        id: 2,
+        amount: 15000,
+        description: 'Salary payment',
+        category: 'Salary',
+        categoryId: salaryCategory.id,
+        type: 'Cash-Out',
+        paymentMode: 'G-Pay',
+        date: new Date('2026-01-13'),
+        accountId: account1.id,
+        createdBy: owner.id,
+        companyId: company.id,
+        siteId: site1.id,
+      },
+    })
+  }
+
+  console.log('2 transactions created/updated')
+
+  // Create Sample Attendance Records
+  await prisma.attendance.upsert({
+    where: { employeeId_date: { employeeId: emp1.id, date: new Date('2026-01-13') } },
+    update: { status: 1.0 },
+    create: {
+      employeeId: emp1.id,
+      date: new Date('2026-01-13'),
+      status: 1.0,
+      companyId: company.id,
+    },
+  })
+
+  await prisma.attendance.upsert({
+    where: { employeeId_date: { employeeId: emp2.id, date: new Date('2026-01-13') } },
+    update: { status: 1.0 },
+    create: {
+      employeeId: emp2.id,
+      date: new Date('2026-01-13'),
+      status: 1.0,
+      companyId: company.id,
+    },
+  })
+
+  console.log('2 attendance records created/updated')
+
+  // Create Sample Payroll
+  await prisma.payroll.upsert({
+    where: { id: 1 },
+    update: {
+      amount: 15000,
+      fromDate: new Date('2026-01-01'),
+      toDate: new Date('2026-01-13'),
+    },
+    create: {
+      id: 1,
+      employeeId: emp1.id,
+      amount: 15000,
+      accountId: account1.id,
+      fromDate: new Date('2026-01-01'),
+      toDate: new Date('2026-01-13'),
+      remarks: 'January payroll',
+      companyId: company.id,
+    },
+  })
+
+  console.log('1 payroll record created/updated')
+
+  // Create Sample Advance
+  await prisma.advance.upsert({
+    where: { id: 1 },
+    update: {
+      amount: 5000,
+      date: new Date('2026-01-08'),
+      reason: 'Emergency advance',
+    },
+    create: {
+      id: 1,
+      employeeId: emp1.id,
+      amount: 5000,
+      date: new Date('2026-01-08'),
+      reason: 'Emergency advance',
+      companyId: company.id,
+    },
+  })
+
+  console.log('1 advance record created/updated')
   
   console.log('✅ Database seeding completed successfully!')
   console.log('Users created:')

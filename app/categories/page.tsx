@@ -82,6 +82,10 @@ export default function Categories() {
     setShowForm(false)
   }
 
+  const systemCategories = ['Capital', 'Salary', 'Salary Advance']
+
+  const isSystemCategory = (name: string) => systemCategories.includes(name)
+
   const handleDelete = async (id: number) => {
     if (!confirm('Are you sure you want to delete this category?')) return
 
@@ -230,12 +234,16 @@ export default function Categories() {
                             <button
                               onClick={() => handleEdit(category)}
                               className="text-blue-600 hover:text-blue-800 mr-3"
+                              disabled={isSystemCategory(category.name)}
+                              title={isSystemCategory(category.name) ? 'System category cannot be edited' : ''}
                             >
                               ✏️
                             </button>
                             <button
                               onClick={() => handleDelete(category.id)}
-                              className="text-red-600 hover:text-red-800"
+                              className={isSystemCategory(category.name) ? "text-gray-300 cursor-not-allowed" : "text-red-600 hover:text-red-800"}
+                              disabled={isSystemCategory(category.name)}
+                              title={isSystemCategory(category.name) ? 'System category cannot be deleted' : ''}
                             >
                               🗑️
                             </button>

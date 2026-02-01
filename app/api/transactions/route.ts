@@ -161,8 +161,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Get account details to retrieve siteId
+    const account = await prisma.account.findUnique({
+      where: { id: accountId },
+      select: { siteId: true }
+    });
 
-    // Map siteId from user (adjust if your schema uses a different field)
+    if (!account) {
+      return NextResponse.json(
+        { error: 'Account not found' },
+        { status: 404 }
+      );
+    }
+
+    // Map siteId from account if available, otherwise from user
     const categoryId = body.categoryId ? Number(body.categoryId) : null;
     
     const tx = await prisma.transaction.create({
@@ -177,7 +189,7 @@ export async function POST(req: NextRequest) {
         accountId,
         createdBy: user.id,
         companyId: companyId,
-        siteId: user.siteId ?? undefined,
+        siteId: account.siteId || user.siteId || undefined,
       },
       include: { 
         account: true,
@@ -240,6 +252,19 @@ export async function PUT(req: NextRequest) {
       );
     }
 
+    // Get account details to retrieve siteId
+    const account = await prisma.account.findUnique({
+      where: { id: accountId },
+      select: { siteId: true }
+    });
+
+    if (!account) {
+      return NextResponse.json(
+        { error: 'Account not found' },
+        { status: 404 }
+      );
+    }
+
     const transaction = await prisma.transaction.update({
       where: { id: parseInt(id) },
       data: {
@@ -251,7 +276,7 @@ export async function PUT(req: NextRequest) {
         paymentMode: body.paymentMode || 'G-Pay',
         date: new Date(body.date),
         accountId,
-        siteId: user.siteId ?? undefined,
+        siteId: account.siteId || user.siteId || undefined,
       },
       include: {
         account: true,

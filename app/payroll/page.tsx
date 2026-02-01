@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import MobileNav from '../components/MobileNav';
+import ProfileMenu from '../components/ProfileMenu';
 import { useAuth } from '../components/AuthProvider';
 import { formatINR } from '@/lib/formatters';
 
 interface PayrollPreview {
   employeeId: number;
   employeeName: string;
+  salaryFrequency: string;
   baseSalary: number;
   salary: number;
   totalAdvance: number;
@@ -64,14 +66,29 @@ export default function Payroll() {
   }, []);
 
   // Calculate totals from backend data
-  const totals = payrollPreview.reduce(
-    (acc, record) => ({
-      grossPay: acc.grossPay + (record.salary || 0),
-      advances: acc.advances + (record.totalAdvance || 0),
-      salaryPaid: acc.salaryPaid + (record.totalSalaryPaid || 0),
-    }),
-    { grossPay: 0, advances: 0, salaryPaid: 0 }
-  );
+  const monthlyEmployees = payrollPreview.filter(emp => emp.salaryFrequency === 'M');
+  const dailyEmployees = payrollPreview.filter(emp => emp.salaryFrequency === 'D');
+
+  const calculateTotals = (employees: PayrollPreview[]) => {
+    return employees.reduce(
+      (acc, record) => ({
+        grossPay: acc.grossPay + (record.salary || 0),
+        advances: acc.advances + (record.totalAdvance || 0),
+        salaryPaid: acc.salaryPaid + (record.totalSalaryPaid || 0),
+      }),
+      { grossPay: 0, advances: 0, salaryPaid: 0 }
+    );
+  };
+
+  const monthlyTotals = calculateTotals(monthlyEmployees);
+  const dailyTotals = calculateTotals(dailyEmployees);
+  const totalTotals = calculateTotals(payrollPreview);
+
+  const totals = {
+    grossPay: totalTotals.grossPay,
+    advances: totalTotals.advances,
+    salaryPaid: totalTotals.salaryPaid
+  };
 
   // Fetch payroll preview from backend
   useEffect(() => {
@@ -226,11 +243,14 @@ export default function Payroll() {
       {/* Main Content */}
       <div className="flex-1 lg:ml-0 pt-16 lg:pt-0">
         <header className="bg-white shadow">
-          <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
             <h1 className="text-3xl font-bold text-gray-900 flex items-center">
               <span className="mr-3 text-green-600">💰</span>
               Payroll
             </h1>
+            <div className="hidden lg:block">
+              <ProfileMenu />
+            </div>
           </div>
         </header>
 
@@ -408,58 +428,119 @@ export default function Payroll() {
               {/* Payroll Preview Records */}
               <div className="bg-white p-6 rounded-lg shadow">
                 <h3 className="text-lg font-medium text-gray-900 mb-4">Payroll Preview</h3>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Employee
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Days Worked
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          OT Hours
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Per Day Salary
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Gross Salary
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Advances
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Net Balance
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {payrollPreview.length === 0 ? (
+
+                {/* MONTHLY EMPLOYEES SECTION */}
+                {monthlyEmployees.length > 0 && (
+                <div className="mb-8">
+                  <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4 rounded">
+                    <h4 className="text-lg font-semibold text-blue-900 flex items-center">
+                      📅 Monthly Employees ({monthlyEmployees.length})
+                    </h4>
+                    <p className="text-sm text-blue-700 mt-1">Fixed monthly salary</p>
+                  </div>
+                  <div className="overflow-x-auto mb-6">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
                         <tr>
-                          <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
-                            {loading ? 'Loading...' : 'No payroll data found. Please select a date range.'}
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Employee
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Monthly Salary
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Advances
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Net Balance
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {monthlyEmployees.map((record) => {
+                          const netBalance = record.salary - record.totalAdvance;
+                          return (
+                            <tr key={record.employeeId}>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                {record.employeeName}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600 font-medium">
+                                {formatINR(record.salary)}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-orange-600">
+                                {formatINR(record.totalAdvance)}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-600 font-medium">
+                                {formatINR(netBalance)}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                      <tfoot className="bg-blue-100">
+                        <tr>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-blue-900">MONTHLY TOTAL</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-green-600">
+                            {formatINR(monthlyTotals.grossPay)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-orange-600">
+                            {formatINR(monthlyTotals.advances)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-blue-600">
+                            {formatINR(monthlyTotals.grossPay - monthlyTotals.advances)}
                           </td>
                         </tr>
-                      ) : (
-                        payrollPreview.map((record) => {
-                          // record.salary now contains the calculated gross salary based on attendance
-                          const grossSalary = record.salary; // Already calculated in backend
-                          const baseDailySalary = record.baseSalary || 0; // Base salary from employee record
-                          
-                          // Calculate Days Worked INCLUDING OT multipliers (sum of all status values)
-                          // Present=1, OT4Hrs=1.5, OT8Hrs=2, Absent=0
+                      </tfoot>
+                    </table>
+                  </div>
+                </div>
+                )}
+
+                {/* DAILY EMPLOYEES SECTION */}
+                {dailyEmployees.length > 0 && (
+                <div className="mb-8">
+                  <div className="bg-amber-50 border-l-4 border-amber-400 p-4 mb-4 rounded">
+                    <h4 className="text-lg font-semibold text-amber-900 flex items-center">
+                      📊 Daily Employees ({dailyEmployees.length})
+                    </h4>
+                    <p className="text-sm text-amber-700 mt-1">Salary based on attendance + OT calculations</p>
+                  </div>
+                  <div className="overflow-x-auto mb-6">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Employee
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Days Worked
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            OT Hours
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Daily Rate
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Gross Salary
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Advances
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Net Balance
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {dailyEmployees.map((record) => {
                           const daysWorked = record.attendance.reduce((total, att) => total + att.status, 0);
-                          
-                          // Calculate OT hours: OT4Hrs (status=1.5) = 4 hours, OT8Hrs (status=2) = 8 hours
                           const otHours = record.attendance.reduce((total, att) => {
-                            if (att.status === 1.5) return total + 4; // OT4Hrs
-                            if (att.status === 2) return total + 8;   // OT8Hrs
+                            if (att.status === 1.5) return total + 4;
+                            if (att.status === 2) return total + 8;
                             return total;
                           }, 0);
-                          
-                          const netBalance = grossSalary - record.totalAdvance;
+                          const netBalance = record.salary - record.totalAdvance;
                           
                           return (
                             <tr key={record.employeeId}>
@@ -473,10 +554,10 @@ export default function Payroll() {
                                 {otHours > 0 ? `${otHours} hrs` : '-'}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                {formatINR(baseDailySalary)}
+                                {formatINR(record.baseSalary)}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600 font-medium">
-                                {formatINR(grossSalary)}
+                                {formatINR(record.salary)}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-orange-600">
                                 {formatINR(record.totalAdvance)}
@@ -486,28 +567,52 @@ export default function Payroll() {
                               </td>
                             </tr>
                           );
-                        })
-                      )}
-                    </tbody>
-                    <tfoot className="bg-gray-100">
-                      <tr>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">TOTAL</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-700"></td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-700"></td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-600"></td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-green-600">
-                          {formatINR(totals.grossPay)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-orange-600">
-                          {formatINR(totals.advances)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-blue-600">
-                          {formatINR(totals.grossPay - totals.advances)}
-                        </td>
-                      </tr>
-                    </tfoot>
-                  </table>
+                        })}
+                      </tbody>
+                      <tfoot className="bg-amber-100">
+                        <tr>
+                          <td colSpan={4} className="px-6 py-4 whitespace-nowrap text-sm font-bold text-amber-900">DAILY TOTAL</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-green-600">
+                            {formatINR(dailyTotals.grossPay)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-orange-600">
+                            {formatINR(dailyTotals.advances)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-blue-600">
+                            {formatINR(dailyTotals.grossPay - dailyTotals.advances)}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
                 </div>
+                )}
+
+                {payrollPreview.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  {loading ? 'Loading...' : 'No payroll data found. Please select a date range.'}
+                </div>
+                )}
+
+                {/* GRAND TOTAL FOOTER */}
+                {payrollPreview.length > 0 && (
+                <div className="bg-gray-900 text-white p-4 rounded-lg mt-6">
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-300">TOTAL GROSS PAY</p>
+                      <p className="text-2xl font-bold text-green-400">{formatINR(totals.grossPay)}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-300">TOTAL ADVANCES</p>
+                      <p className="text-2xl font-bold text-orange-400">{formatINR(totals.advances)}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-300">NET PAYABLE</p>
+                      <p className="text-2xl font-bold text-blue-400">{formatINR(totals.grossPay - totals.advances)}</p>
+                    </div>
+                  </div>
+                </div>
+                )}
               </div>
             </div>
           </div>
