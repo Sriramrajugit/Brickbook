@@ -23,10 +23,6 @@ model Company {
   sites        Site[]
   transactions Transaction[]
   users        User[]
-  suppliers    Supplier[]
-  items        Item[]
-  invoices     Invoice[]
-  stockTransactions StockTransaction[]
 
   @@map("companies")
 }
@@ -42,8 +38,6 @@ model Site {
   company      Company       @relation(fields: [companyId], references: [id])
   transactions Transaction[]
   users        User[]
-  invoices     Invoice[]
-  stockTransactions StockTransaction[]
 
   @@index([companyId])
   @@map("sites")
@@ -62,7 +56,6 @@ model User {
   siteId       Int?
   companyId    Int
   transactions Transaction[]
-  invoices     Invoice[]
   company      Company       @relation(fields: [companyId], references: [id])
   site         Site?         @relation(fields: [siteId], references: [id])
 
@@ -193,98 +186,9 @@ model Advance {
   @@map("advances")
 }
 
-// ==================== INVENTORY MODULE (PREMIUM) ====================
-
-model Supplier {
-  id           Int          @id @default(autoincrement())
-  name         String
-  email        String?
-  phone        String?
-  address      String?
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-  companyId    Int
-  company      Company      @relation(fields: [companyId], references: [id])
-  invoices     Invoice[]
-
-  @@unique([name, companyId])
-  @@index([companyId])
-  @@map("suppliers")
-}
-
-model Item {
-  id              Int                 @id @default(autoincrement())
-  name            String
-  description     String?
-  category        String?
-  unit            String              @default("Bag") // Bag, Kg, Ton, Nos, etc
-  openingStock    Float               @default(0)
-  currentStock    Float               @default(0)
-  reorderLevel    Float?
-  defaultRate     Float?
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
-  companyId       Int
-  company         Company             @relation(fields: [companyId], references: [id])
-  stockTransactions StockTransaction[]
-
-  @@unique([name, companyId])
-  @@index([companyId])
-  @@map("items")
-}
-
-model Invoice {
-  id              Int                 @id @default(autoincrement())
-  invoiceNumber   String
-  supplierId      Int?
-  invoiceDate     DateTime
-  totalAmount     Float
-  taxAmount       Float?              @default(0)
-  notes           String?
-  fileUrl         String?
-  ocrStatus       String              @default("pending") // pending, completed, failed
-  status          String              @default("draft") // draft, confirmed, posted
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
-  createdBy       Int?
-  companyId       Int
-  siteId          Int?
-  supplier        Supplier?           @relation(fields: [supplierId], references: [id])
-  company         Company             @relation(fields: [companyId], references: [id])
-  site            Site?               @relation(fields: [siteId], references: [id])
-  createdByUser   User?               @relation(fields: [createdBy], references: [id])
-  stockTransactions StockTransaction[]
-
-  @@unique([invoiceNumber, companyId])
-  @@index([companyId])
-  @@index([siteId])
-  @@map("invoices")
-}
-
-model StockTransaction {
-  id              Int       @id @default(autoincrement())
-  itemId          Int
-  invoiceId       Int?
-  transactionType String    // STOCK_IN, STOCK_OUT
-  quantity        Float
-  rate            Float?
-  totalAmount     Float?
-  notes           String?
-  createdAt       DateTime  @default(now())
-  companyId       Int
-  siteId          Int?
-  item            Item      @relation(fields: [itemId], references: [id], onDelete: Cascade)
-  invoice         Invoice?  @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
-  company         Company   @relation(fields: [companyId], references: [id])
-  site            Site?     @relation(fields: [siteId], references: [id])
-
-  @@index([itemId])
-  @@index([invoiceId])
-  @@index([companyId])
-  @@index([siteId])
-  @@map("stock_transactions")
-}
-
+// ==================== INVENTORY MODULE (PREMIUM - NOT YET DEPLOYED) ====================
+// Commented out: Inventory module to be deployed in future release
+// Model definitions preserved for reference but not included in Prisma schema
 // ==================== END INVENTORY MODULE ====================
 
 enum UserRole {
