@@ -82,11 +82,6 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
     { href: '/users', label: 'Users', icon: '🔐' },
   ]
 
-  const inventoryItems = [
-    { href: '/inventory/items', label: 'Items', icon: '📦' },
-    { href: '/inventory/suppliers', label: 'Suppliers', icon: '🏢' },
-  ]
-
   const isMasterActive = masterItems.some(item => item.href === currentPage)
 
   return (
@@ -199,26 +194,6 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
                     {item.label}
                   </Link>
                 ))}
-                
-                {/* Inventory Subsection */}
-                <div className="border-t border-gray-300 mt-2 pt-2">
-                  <div className="px-12 py-2 text-xs font-semibold text-gray-600 uppercase">
-                    📦 Inventory
-                  </div>
-                  {inventoryItems.map((item) => (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      onClick={() => setIsOpen(false)}
-                      className={`block px-12 py-2 text-sm text-gray-700 hover:bg-gray-200 ${
-                        currentPage === item.href ? 'bg-gray-200 font-medium' : ''
-                      }`}
-                    >
-                      <span className="mr-2">{item.icon}</span>
-                      {item.label}
-                    </Link>
-                  ))}
-                </div>
               </div>
             )}
           </div>
