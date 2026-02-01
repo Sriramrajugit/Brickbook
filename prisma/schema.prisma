@@ -58,7 +58,7 @@ model User {
   updatedAt    DateTime      @updatedAt
   logoutTime   DateTime?
   role         UserRole      @default(GUEST)
-  status       String        @default("Active")
+  status       String        @default("Active") // User account status: Active/Inactive/Suspended
   siteId       Int?
   companyId    Int
   transactions Transaction[]
