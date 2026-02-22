@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
         }
 
         const account = accounts.find(
-          a => a.name.toLowerCase() === accountName.toLowerCase()
+          (a: any) => a.name.toLowerCase() === accountName.toLowerCase()
         );
 
         if (!account) {
@@ -132,12 +132,12 @@ export async function POST(request: NextRequest) {
         let categoryId: number | null = null;
         if (categoryName) {
           const category = categories.find(
-            c => c.name.toLowerCase() === categoryName.toLowerCase()
+            (c: any) => c.name.toLowerCase() === categoryName.toLowerCase()
           );
 
           if (!category) {
             errors.push(
-              `Row ${rowNum}: Category '${categoryName}' not found. Available: ${categories.map(c => c.name).join(', ')}`
+              `Row ${rowNum}: Category '${categoryName}' not found. Available: ${categories.map((c: any) => c.name).join(', ')}`
             );
             continue;
           }
