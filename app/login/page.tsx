@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 
@@ -9,7 +9,12 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [isMounted, setIsMounted] = useState(false)
   const router = useRouter()
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -48,20 +53,35 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center overflow-hidden relative bg-cover bg-center">
+    <div className="min-h-screen w-full flex items-center justify-center overflow-hidden relative bg-cover bg-center" suppressHydrationWarning>
       {/* Background Image */}
       <div className="absolute inset-0 w-full h-full z-0">
-        <Image
-          src="/login-bg.png"
-          alt="Background"
-          fill
-          priority
-          //className="object-cover"
-          className="object-contain md:object-cover"
-          quality={100}
-        />
-        {/* Overlay for better readability */}
-        <div className="absolute inset-0 bg-gradient-to-b from-blue-400/30 via-blue-300/20 to-cyan-300/30"></div>
+        {isMounted && (
+          <>
+            {/* Mobile Image - Hidden on md and above */}
+            <Image
+              src="/login-bg-mobile.png"
+              alt="Background Mobile"
+              fill
+              priority
+              className="block md:hidden object-cover"
+              quality={100}
+            />
+            
+            {/* Desktop Image - Hidden below md */}
+            <Image
+              src="/login-bg-web.png"
+              alt="Background Desktop"
+              fill
+              priority
+              className="hidden md:block object-cover"
+              quality={100}
+            />
+            
+            {/* Overlay for better readability */}
+            <div className="absolute inset-0 bg-gradient-to-b from-blue-400/30 via-blue-300/20 to-cyan-300/30"></div>
+          </>
+        )}
       </div>
 
       {/* Content Container */}

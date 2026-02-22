@@ -8,6 +8,7 @@ import { useAuth } from '../components/AuthProvider'
 interface Employee {
   id: number
   name: string
+  partnerType: string
   status: string
 }
 
@@ -206,7 +207,9 @@ export default function Attendance() {
                 </div>
 
                 <div className="space-y-4">
-                  {employees.map(employee => (
+                  {employees
+                    .filter(emp => emp.partnerType === 'Employee')
+                    .map(employee => (
                     <div
                       key={employee.id}
                       className="border rounded-lg p-4 hover:shadow-md transition-shadow"
