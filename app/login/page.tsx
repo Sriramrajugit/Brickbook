@@ -65,11 +65,11 @@ export default function Login() {
       </div>
 
       {/* Content Container */}
-      <div className="relative z-10 flex flex-col items-center justify-center w-full min-h-screen px-4 py-8 pt-20">
+      <div className="relative z-10 flex flex-col items-center justify-center w-full min-h-screen px-4 py-8 md:pt-20">
        
         {/* Middle Section - Circular Form Container */}
-        <div className="flex items-center justify-center w-full mt-32">
-          <div className="bg-white/95 backdrop-blur-md rounded-full shadow-2xl p-10 sm:p-12 w-80 sm:w-96 h-80 sm:h-96 flex flex-col items-center justify-center border border-white/40 relative">
+        <div className="flex items-center justify-center w-full mt-8 md:mt-32">
+          <div className="bg-white/95 backdrop-blur-md rounded-full shadow-2xl p-8 sm:p-10 md:p-12 w-72 sm:w-80 md:w-96 h-72 sm:h-80 md:h-96 flex flex-col items-center justify-center border border-white/40 relative">
             
                       
             <form onSubmit={handleSubmit} className="w-full space-y-4 flex flex-col items-center">

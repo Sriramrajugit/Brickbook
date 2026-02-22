@@ -12,28 +12,47 @@
 -- Purpose: Convert attendance status to numeric for better calculations
 -- ============================================================================
 
--- Step 1: Create a new column with numeric type
-ALTER TABLE "attendances" ADD COLUMN "status_numeric" DOUBLE PRECISION;
+-- Step 1: Check if status column exists and is still text/varchar type
+-- If already numeric, skip conversion (idempotent)
+DO $$ 
+DECLARE
+    col_type text;
+BEGIN
+    -- Get the current data type of status column
+    SELECT data_type INTO col_type
+    FROM information_schema.columns
+    WHERE table_name = 'attendances' AND column_name = 'status';
+    
+    -- Only proceed if status is character-based (needs conversion)
+    IF col_type LIKE '%char%' OR col_type = 'text' THEN
+        -- Step 2: Create a new column with numeric type
+        ALTER TABLE "attendances" ADD COLUMN "status_numeric" DOUBLE PRECISION DEFAULT 1.0;
 
--- Step 2: Convert existing string values to numeric
--- Map: "Present" = 1, "OT4Hrs" or "OT4hrs" = 1.5, "OT8Hrs" or "OT8hrs" = 2, "Absent" = 0
-UPDATE "attendances" SET "status_numeric" = CASE
-  WHEN "status" = 'Present' THEN 1
-  WHEN "status" = 'Absent' THEN 0
-  WHEN "status" = 'OT4Hrs' OR "status" = 'OT4hrs' THEN 1.5
-  WHEN "status" = 'OT8Hrs' OR "status" = 'OT8hrs' THEN 2
-  WHEN "status" ~ '^[0-9.]+$' THEN CAST("status" AS DOUBLE PRECISION)
-  ELSE 1
-END;
+        -- Step 3: Convert existing string values to numeric
+        -- Map: "Present" = 1, "OT4Hrs" or "OT4hrs" = 1.5, "OT8Hrs" or "OT8hrs" = 2, "Absent" = 0
+        UPDATE "attendances" SET "status_numeric" = CASE
+          WHEN "status" = 'Present' THEN 1.0
+          WHEN "status" = 'Absent' THEN 0.0
+          WHEN "status" = 'OT4Hrs' OR "status" = 'OT4hrs' THEN 1.5
+          WHEN "status" = 'OT8Hrs' OR "status" = 'OT8hrs' THEN 2.0
+          WHEN "status" ~ '^[0-9.]+$' THEN CAST("status" AS DOUBLE PRECISION)
+          ELSE 1.0
+        END;
 
--- Step 3: Drop the old column
-ALTER TABLE "attendances" DROP COLUMN "status";
+        -- Step 4: Drop the old column
+        ALTER TABLE "attendances" DROP COLUMN "status";
 
--- Step 4: Rename the new column to original name
-ALTER TABLE "attendances" RENAME COLUMN "status_numeric" TO "status";
+        -- Step 5: Rename the new column to original name
+        ALTER TABLE "attendances" RENAME COLUMN "status_numeric" TO "status";
 
--- Step 5: Set NOT NULL constraint
-ALTER TABLE "attendances" ALTER COLUMN "status" SET NOT NULL;
+        -- Step 6: Remove NOT NULL constraint (in case of NULL values from CASE ELSE)
+        ALTER TABLE "attendances" ALTER COLUMN "status" SET NOT NULL;
+        
+        RAISE NOTICE 'Attendance status conversion completed: Text → DOUBLE PRECISION';
+    ELSE
+        RAISE NOTICE 'Attendance status already numeric type (%), skipping conversion', col_type;
+    END IF;
+END $$;
 
 -- Migration 2: Fix email field
 -- Applied: 2025-12-25
@@ -129,8 +148,22 @@ ALTER TABLE "categories" ADD CONSTRAINT "categories_name_companyId_key" UNIQUE("
 -- Purpose: Ensure attendance status is stored as numeric float (attendance percentage)
 -- ============================================================================
 
--- Verify status column is DOUBLE PRECISION
-ALTER TABLE "attendances" ALTER COLUMN "status" TYPE DOUBLE PRECISION USING "status"::DOUBLE PRECISION;
+-- Safely alter column type only if it's not already numeric
+DO $$ 
+DECLARE
+    col_type text;
+BEGIN
+    SELECT data_type INTO col_type
+    FROM information_schema.columns
+    WHERE table_name = 'attendances' AND column_name = 'status';
+    
+    IF col_type != 'double precision' THEN
+        ALTER TABLE "attendances" ALTER COLUMN "status" TYPE DOUBLE PRECISION USING "status"::DOUBLE PRECISION;
+        RAISE NOTICE 'Attendance status type changed to DOUBLE PRECISION';
+    ELSE
+        RAISE NOTICE 'Attendance status already DOUBLE PRECISION, skipping';
+    END IF;
+END $$;
 
 -- Migration 12: Add user status
 -- Applied: 2026-01-14
