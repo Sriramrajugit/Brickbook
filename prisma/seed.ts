@@ -239,12 +239,14 @@ async function main() {
   // Create Employees
   const emp1 = await prisma.employee.upsert({
     where: { id: 1 },
-    update: { name: 'John Doe', etype: 'Labour', salary: 15000, companyId: company.id },
+    update: { name: 'John Doe', partnerType: 'Employee', etype: 'Labour', salary: 15000, companyId: company.id },
     create: {
       id: 1,
       name: 'John Doe',
+      partnerType: 'Employee',
       etype: 'Labour',
       salary: 15000,
+      salaryFrequency: 'M',
       status: 'Active',
       companyId: company.id,
     },
@@ -252,18 +254,68 @@ async function main() {
 
   const emp2 = await prisma.employee.upsert({
     where: { id: 2 },
-    update: { name: 'Jane Smith', etype: 'Supervisor', salary: 25000, companyId: company.id },
+    update: { name: 'Jane Smith', partnerType: 'Employee', etype: 'Supervisor', salary: 25000, companyId: company.id },
     create: {
       id: 2,
       name: 'Jane Smith',
+      partnerType: 'Employee',
       etype: 'Supervisor',
       salary: 25000,
+      salaryFrequency: 'M',
       status: 'Active',
       companyId: company.id,
     },
   })
 
-  console.log('2 employees created/updated')
+  // Create Supplier
+  const emp3 = await prisma.employee.upsert({
+    where: { id: 3 },
+    update: { name: 'ABC Supplies Ltd', partnerType: 'Supplier', etype: 'Material Supplier', salary: null, companyId: company.id },
+    create: {
+      id: 3,
+      name: 'ABC Supplies Ltd',
+      partnerType: 'Supplier',
+      etype: 'Material Supplier',
+      salary: null,
+      salaryFrequency: 'M',
+      status: 'Active',
+      companyId: company.id,
+    },
+  })
+
+  // Create Contractor
+  const emp4 = await prisma.employee.upsert({
+    where: { id: 4 },
+    update: { name: 'XYZ Construction', partnerType: 'Contractor', etype: 'General Contractor', salary: null, companyId: company.id },
+    create: {
+      id: 4,
+      name: 'XYZ Construction',
+      partnerType: 'Contractor',
+      etype: 'General Contractor',
+      salary: null,
+      salaryFrequency: 'M',
+      status: 'Active',
+      companyId: company.id,
+    },
+  })
+
+  // Create Daily Laborer (Employee with Daily Salary)
+  const emp5 = await prisma.employee.upsert({
+    where: { id: 5 },
+    update: { name: 'Raj Kumar', partnerType: 'Employee', etype: 'Daily Laborer', salary: 500, companyId: company.id },
+    create: {
+      id: 5,
+      name: 'Raj Kumar',
+      partnerType: 'Employee',
+      etype: 'Daily Laborer',
+      salary: 500,
+      salaryFrequency: 'D',
+      status: 'Active',
+      companyId: company.id,
+    },
+  })
+
+  console.log('✅ 5 partners created/updated (2 Employees, 1 Daily Laborer, 1 Supplier, 1 Contractor)')
 
   // Create Sample Transactions
   const txnCategory = await prisma.category.findFirst({

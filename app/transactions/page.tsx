@@ -20,6 +20,7 @@ interface Category {
 interface Employee {
   id: number;
   name: string;
+  partnerType: string;
   status: string;
 }
 
@@ -223,56 +224,69 @@ export default function Transactions() {
       setSelectedAccount(account.id.toString());
     }
 
-    // For Salary Advance, fetch the related advance record to get employeeId
-    if (transaction.category === 'Salary Advance') {
+    // For Salary Advance, Salary, or To Contractor - fetch the related employee
+    if (transaction.category === 'Salary Advance' || transaction.category === 'Salary' || transaction.category === 'To Contractor') {
       try {
-        // Fetch all employees (not just active ones) to find the partner
+        // Fetch all employees to find the partner
         const empRes = await fetch('/api/employees');
         const allEmployees = empRes.ok ? await empRes.json() : [];
         
-        const advancesRes = await fetch('/api/advances');
-        if (advancesRes.ok) {
-          const advancesData = await advancesRes.json();
-          
-          // Find advance record that matches this transaction amount and date
-          // Use flexible matching to account for Decimal/Float differences
-          const matchingAdvance = advancesData.find(
-            (adv: any) => {
-              const advAmount = Number(adv.amount);
-              const txAmount = Number(transaction.amount);
-              const advDate = new Date(adv.date).toDateString();
-              const txDate = new Date(transaction.date).toDateString();
-              
-              // Check if amounts are within 0.01 (to account for rounding)
-              const amountsMatch = Math.abs(advAmount - txAmount) < 0.01;
-              const datesMatch = advDate === txDate;
-              
-              return amountsMatch && datesMatch;
-            }
-          );
-          
-          if (matchingAdvance && matchingAdvance.employee && matchingAdvance.employee.id) {
-            const empId = matchingAdvance.employee.id.toString();
-            const empName = matchingAdvance.employee.name || '';
-            setSelectedEmployee(empId);
-            setSelectedEmployeeName(empName);
-          } else if (matchingAdvance && matchingAdvance.employeeId) {
-            const empId = matchingAdvance.employeeId.toString();
-            setSelectedEmployee(empId);
-            // Try to find name from allEmployees
-            if (allEmployees && allEmployees.length > 0) {
-              const emp = allEmployees.find((e: any) => e.id.toString() === empId);
-              if (emp) {
-                setSelectedEmployeeName(emp.name || '');
+        if (transaction.category === 'Salary Advance') {
+          // For Salary Advance, also fetch advance records
+          const advancesRes = await fetch('/api/advances');
+          if (advancesRes.ok) {
+            const advancesData = await advancesRes.json();
+            
+            // Find advance record that matches this transaction amount and date
+            // Use flexible matching to account for Decimal/Float differences
+            const matchingAdvance = advancesData.find(
+              (adv: any) => {
+                const advAmount = Number(adv.amount);
+                const txAmount = Number(transaction.amount);
+                const advDate = new Date(adv.date).toDateString();
+                const txDate = new Date(transaction.date).toDateString();
+                
+                // Check if amounts are within 0.01 (to account for rounding)
+                const amountsMatch = Math.abs(advAmount - txAmount) < 0.01;
+                const datesMatch = advDate === txDate;
+                
+                return amountsMatch && datesMatch;
               }
+            );
+            
+            if (matchingAdvance && matchingAdvance.employee && matchingAdvance.employee.id) {
+              const empId = matchingAdvance.employee.id.toString();
+              const empName = matchingAdvance.employee.name || '';
+              setSelectedEmployee(empId);
+              setSelectedEmployeeName(empName);
+            } else if (matchingAdvance && matchingAdvance.employeeId) {
+              const empId = matchingAdvance.employeeId.toString();
+              setSelectedEmployee(empId);
+              // Try to find name from allEmployees
+              if (allEmployees && allEmployees.length > 0) {
+                const emp = allEmployees.find((e: any) => e.id.toString() === empId);
+                if (emp) {
+                  setSelectedEmployeeName(emp.name || '');
+                }
+              }
+            } else {
+              setSelectedEmployee('');
+              setSelectedEmployeeName('');
             }
-          } else {
-            setSelectedEmployee('');
-            setSelectedEmployeeName('');
+          }
+        } else {
+          // For Salary or To Contractor - extract employee name from description
+          if (transaction.description && allEmployees.length > 0) {
+            const empName = transaction.description.split(' - ')[0];
+            const emp = allEmployees.find((e: any) => e.name === empName);
+            if (emp) {
+              setSelectedEmployee(emp.id.toString());
+              setSelectedEmployeeName(emp.name);
+            }
           }
         }
       } catch (err) {
-        console.error('Error fetching advance for edit:', err);
+        console.error('Error fetching employee for edit:', err);
       }
     }
     
@@ -382,8 +396,8 @@ export default function Transactions() {
       return;
     }
 
-    // Validate: Partner is required for Salary Advance and Salary
-    if ((data.category === 'Salary Advance' || data.category === 'Salary') && !selectedEmployee) {
+    // Validate: Partner is required for Salary Advance, Salary, and To Contractor
+    if ((data.category === 'Salary Advance' || data.category === 'Salary' || data.category === 'To Contractor') && !selectedEmployee) {
       alert('Please select a partner for ' + data.category);
       return;
     }
@@ -598,7 +612,7 @@ export default function Transactions() {
                     </select>
                   </div>
 
-                  {(selectedCategory === 'Salary Advance' || selectedCategory === 'Salary') && (
+                  {(selectedCategory === 'Salary Advance' || selectedCategory === 'Salary' || selectedCategory === 'To Contractor') && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700">
                         Partner <span className="text-red-500">*</span>
@@ -620,7 +634,7 @@ export default function Transactions() {
                             const empId = e.target.value;
                             setSelectedEmployee(empId);
                             // Auto-populate description with Partner Name + Category
-                            if ((selectedCategory === 'Salary Advance' || selectedCategory === 'Salary') && empId) {
+                            if ((selectedCategory === 'Salary Advance' || selectedCategory === 'Salary' || selectedCategory === 'To Contractor') && empId) {
                               const selectedEmp = employees.find(emp => emp.id.toString() === empId);
                               if (selectedEmp) {
                                 setFormDescription(`${selectedEmp.name} - ${selectedCategory}`);
@@ -631,11 +645,22 @@ export default function Transactions() {
                           required
                         >
                           <option value="">Select Partner</option>
-                          {employees.map((emp) => (
-                            <option key={emp.id} value={emp.id.toString()}>
-                              {emp.name}
-                            </option>
-                          ))}
+                          {employees
+                            .filter((emp) => {
+                              // Filter based on selected category
+                              if (selectedCategory === 'Salary' || selectedCategory === 'Salary Advance') {
+                                return emp.partnerType === 'Employee';
+                              }
+                              if (selectedCategory === 'To Contractor') {
+                                return emp.partnerType === 'Supplier' || emp.partnerType === 'Contractor';
+                              }
+                              return true; // Show all for other categories
+                            })
+                            .map((emp) => (
+                              <option key={emp.id} value={emp.id.toString()}>
+                                {emp.name}
+                              </option>
+                            ))}
                         </select>
                       )}
                     </div>

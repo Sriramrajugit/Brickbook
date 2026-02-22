@@ -8,6 +8,7 @@ import { useAuth } from '../components/AuthProvider'
 interface Employee {
   id: number
   name: string
+  partnerType: string
   etype: string | null
   salary: number | null
   salaryFrequency: string
@@ -35,6 +36,7 @@ export default function Employees() {
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null)
   const [formData, setFormData] = useState({
     name: '',
+    partnerType: 'Employee',
     etype: '',
     salary: '',
     salaryFrequency: 'Monthly',
@@ -105,15 +107,19 @@ export default function Employees() {
         setSuccessMessage(editingEmployee ? 'Partner updated successfully!' : 'Partner added successfully!')
         setTimeout(() => setSuccessMessage(''), 3000)
       } else {
-        setError('Failed to save employee')
+        const errorData = await response.json()
+        const errorMsg = errorData.details || errorData.error || 'Failed to save employee'
+        console.error('API Error:', errorData)
+        setError(errorMsg)
       }
     } catch (err) {
-      setError('An error occurred')
+      console.error('Network Error:', err)
+      setError('An error occurred: ' + (err instanceof Error ? err.message : 'Unknown error'))
     }
   }
 
   const resetForm = () => {
-    setFormData({ name: '', etype: '', salary: '', salaryFrequency: 'Monthly', status: 'Active' })
+    setFormData({ name: '', partnerType: 'Employee', etype: '', salary: '', salaryFrequency: 'Monthly', status: 'Active' })
     setEditingEmployee(null)
   }
 
@@ -123,6 +129,7 @@ export default function Employees() {
     const displayFreq = employee.salaryFrequency === 'D' ? 'Daily' : 'Monthly'
     setFormData({
       name: employee.name,
+      partnerType: employee.partnerType || 'Employee',
       etype: employee.etype || '',
       salary: employee.salary ? employee.salary.toString() : '',
       salaryFrequency: displayFreq,
@@ -211,36 +218,55 @@ export default function Employees() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Designation</label>
+                    <label className="block text-sm font-medium text-gray-700">Partner Type <span className="text-red-500">*</span></label>
+                    <select
+                      value={formData.partnerType}
+                      onChange={(e) => setFormData({ ...formData, partnerType: e.target.value })}
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                      required
+                    >
+                      <option value="Employee">Employee</option>
+                      <option value="Supplier">Supplier</option>
+                      <option value="Contractor">Contractor</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      {formData.partnerType === 'Employee' ? 'Designation' : 'Type'}
+                    </label>
                     <input
                       type="text"
                       value={formData.etype}
                       onChange={(e) => setFormData({ ...formData, etype: e.target.value })}
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                      placeholder="e.g., Manager, Laborer, etc."
+                      placeholder={formData.partnerType === 'Employee' ? 'e.g., Manager, Laborer, etc.' : 'e.g., Material Supplier, etc.'}
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Salary</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={formData.salary}
-                      onChange={(e) => setFormData({ ...formData, salary: e.target.value })}
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Salary Frequency</label>
-                    <select
-                      value={formData.salaryFrequency}
-                      onChange={(e) => setFormData({ ...formData, salaryFrequency: e.target.value })}
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                    >
-                      <option value="Monthly">Monthly</option>
-                      <option value="Daily">Daily</option>
-                    </select>
-                  </div>
+                  {formData.partnerType === 'Employee' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Salary Frequency</label>
+                      <select
+                        value={formData.salaryFrequency}
+                        onChange={(e) => setFormData({ ...formData, salaryFrequency: e.target.value })}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                      >
+                        <option value="Monthly">Monthly</option>
+                        <option value="Daily">Daily</option>
+                      </select>
+                    </div>
+                  )}
+                  {formData.partnerType === 'Employee' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Salary</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={formData.salary}
+                        onChange={(e) => setFormData({ ...formData, salary: e.target.value })}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                      />
+                    </div>
+                  )}
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Status</label>
                     <select
@@ -281,9 +307,10 @@ export default function Employees() {
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Designation</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Partner Type</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Designation/Type</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Salary Frequency</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Salary</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Frequency</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                       {canEdit() && (
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -294,11 +321,25 @@ export default function Employees() {
                     {employees.map((employee) => (
                       <tr key={employee.id}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{employee.name}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{employee.etype || '-'}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{employee.salary ? `Rs ${employee.salary.toFixed(2)}` : 'N/A'}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {employee.salaryFrequency === 'M' ? 'Monthly' : 'Daily'}
+                          <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                            employee.partnerType === 'Employee' ? 'bg-blue-100 text-blue-800' :
+                            employee.partnerType === 'Supplier' ? 'bg-green-100 text-green-800' :
+                            'bg-purple-100 text-purple-800'
+                          }`}>
+                            {employee.partnerType}
+                          </span>
                         </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          <span className="font-medium">
+                            {employee.partnerType === 'Employee' ? 'Designation: ' : 'Type: '}
+                          </span>
+                          {employee.etype || '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {employee.partnerType === 'Employee' ? (employee.salaryFrequency === 'M' ? 'Monthly' : 'Daily') : 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{employee.partnerType === 'Employee' ? (employee.salary ? `Rs ${employee.salary.toFixed(2)}` : 'N/A') : 'N/A'}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{employee.status}</td>
                         {canEdit() && (
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">

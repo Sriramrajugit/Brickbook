@@ -70,6 +70,7 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
   const navItems = [
     { href: '/', label: 'Dashboard', icon: '📊' },
     { href: '/transactions', label: 'Transactions', icon: '💰' },
+    { href: '/import', label: 'Import Data', icon: '📥' },
     { href: '/attendance', label: 'Attendance', icon: '📅' },
     { href: '/payroll', label: 'Payroll', icon: '💵' },
     { href: '/reports', label: 'Reports', icon: '📈' },

@@ -59,6 +59,7 @@ export default function Navigation() {
   const mainNavItems = [
     { href: '/', label: 'Dashboard' },
     { href: '/transactions', label: 'Transactions' },
+    { href: '/import', label: 'Import Data' },
     { href: '/accounts', label: 'Accounts' },
     { href: '/categories', label: 'Categories' },
     { href: '/employees', label: 'Employees' },

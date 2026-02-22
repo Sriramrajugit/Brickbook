@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
       select: {
         id: true,
         name: true,
+        partnerType: true,
         etype: true,
         salary: true,
         salaryFrequency: true,
@@ -50,13 +51,14 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, etype, salary, salaryFrequency, status } = body;
+    const { name, partnerType, etype, salary, salaryFrequency, status } = body;
 
-    console.log('📥 API received:', { name, etype, salary, salaryFrequency, status });
+    console.log('📥 API received:', { name, partnerType, etype, salary, salaryFrequency, status });
 
     const employee = await prisma.employee.create({
       data: {
         name,
+        partnerType: partnerType || 'Employee',
         etype,
         salary: salary ? parseFloat(salary) : null,
         salaryFrequency: salaryFrequency || 'M',  // Already M or D from frontend
@@ -66,6 +68,7 @@ export async function POST(request: NextRequest) {
       select: {
         id: true,
         name: true,
+        partnerType: true,
         etype: true,
         salary: true,
         salaryFrequency: true,
@@ -80,7 +83,8 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error creating employee:', error);
     const errorMsg = error instanceof Error ? error.message : String(error);
-    console.error('Detailed error:', errorMsg);
+    const errorStack = error instanceof Error ? error.stack : '';
+    console.error('Detailed error:', { errorMsg, errorStack });
     return NextResponse.json(
       { error: 'Failed to save employee', details: errorMsg },
       { status: 500 },
@@ -99,18 +103,19 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { id, name, etype, salary, salaryFrequency, status } = body
+    const { id, name, partnerType, etype, salary, salaryFrequency, status } = body
 
     if (!id) {
       return NextResponse.json({ error: 'Employee ID is required' }, { status: 400 });
     }
 
-    console.log('📥 API received for update:', { id, name, etype, salary, salaryFrequency, status });
+    console.log('📥 API received for update:', { id, name, partnerType, etype, salary, salaryFrequency, status });
 
     const employee = await prisma.employee.update({
       where: { id: parseInt(id) },
       data: {
         name,
+        partnerType: partnerType || 'Employee',
         etype,
         salary: salary ? parseFloat(salary) : null,
         salaryFrequency: salaryFrequency || 'M',  // Already M or D from frontend
@@ -119,6 +124,7 @@ export async function PUT(request: NextRequest) {
       select: {
         id: true,
         name: true,
+        partnerType: true,
         etype: true,
         salary: true,
         salaryFrequency: true,

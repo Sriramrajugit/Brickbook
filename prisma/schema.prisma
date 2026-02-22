@@ -126,6 +126,7 @@ model Transaction {
 model Employee {
   id              Int          @id @default(autoincrement())
   name            String
+  partnerType     String       @default("Employee")  // Employee, Supplier, Contractor
   etype           String?      // Designation
   salary          Float?
   salaryFrequency String       @default("Monthly")  // Daily or Monthly
