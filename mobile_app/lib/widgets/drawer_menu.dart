@@ -99,7 +99,21 @@ class DrawerMenu extends StatelessWidget {
             route: '/reports',
             isSelected: activeRoute == '/reports',
           ),
+          _buildMenuItem(
+            context,
+            icon: Icons.category,
+            title: 'Categories',
+            route: '/categories',
+            isSelected: activeRoute == '/categories',
+          ),
           const Divider(height: 24),
+          _buildMenuItem(
+            context,
+            icon: Icons.person,
+            title: 'My Profile',
+            route: '/profile',
+            isSelected: activeRoute == '/profile',
+          ),
           _buildMenuItem(
             context,
             icon: Icons.logout,

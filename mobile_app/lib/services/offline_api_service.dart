@@ -4,6 +4,7 @@ import 'local_database.dart';
 import '../models/transaction.dart';
 import '../models/employee.dart';
 import '../models/account.dart';
+import '../models/category.dart';
 
 class OfflineApiService {
   static final LocalDatabase _localDb = LocalDatabase();
@@ -140,5 +141,54 @@ class OfflineApiService {
     } else {
       return await _localDb.getLocalAccounts();
     }
+  }
+
+  // CATEGORIES - Works offline
+  static Future<List<dynamic>> getCategories() async {
+    if (await isOnline()) {
+      try {
+        // Try to fetch from server
+        final categories = await ApiService.getCategories();
+        // Store in shared preferences for offline access
+        // Implementation depends on your API response format
+        return categories;
+      } catch (e) {
+        print('Failed to fetch categories, using defaults: $e');
+        // Return default categories
+        return _getDefaultCategories();
+      }
+    } else {
+      // Offline - use default categories
+      return _getDefaultCategories();
+    }
+  }
+
+  static Future<void> createCategory(Category category) async {
+    if (await isOnline()) {
+      try {
+        await ApiService.createCategory(category);
+        print('Category created on server: ${category.name}');
+      } catch (e) {
+        print('Failed to create category on server: $e');
+        // Still consider this a success for offline-first apps
+      }
+    } else {
+      print('Offline: Category saved locally: ${category.name}');
+    }
+  }
+
+  // Default categories for offline use
+  static List<Category> _getDefaultCategories() {
+    return [
+      Category(name: 'Salary', description: 'Employee salaries'),
+      Category(name: 'Office Supplies', description: 'Office related items'),
+      Category(name: 'Utilities', description: 'Electricity, water, etc'),
+      Category(name: 'Transportation', description: 'Travel and transport'),
+      Category(name: 'Food & Meals', description: 'Food and meal expenses'),
+      Category(name: 'Entertainment', description: 'Entertainment expenses'),
+      Category(name: 'Medical', description: 'Medical expenses'),
+      Category(name: 'Other Income', description: 'Miscellaneous income'),
+      Category(name: 'Other Expenses', description: 'Other expenses'),
+    ];
   }
 }

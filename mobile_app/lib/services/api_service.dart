@@ -5,6 +5,8 @@ import '../models/company.dart';
 import '../models/employee.dart';
 import '../models/transaction.dart';
 import '../models/attendance.dart';
+import '../models/category.dart';
+import '../models/user.dart';
 
 class ApiService {
   // Update this to your backend API URL
@@ -142,6 +144,55 @@ class ApiService {
       return data.cast<Map<String, dynamic>>();
     }
     throw Exception('Failed to load payroll');
+  }
+
+  // Categories
+  static Future<List<dynamic>> getCategories() async {
+    final response = await http.get(Uri.parse('$baseUrl/categories'));
+    if (response.statusCode == 200) {
+      final responseBody = json.decode(response.body);
+      // Handle both array and object response formats
+      if (responseBody is List) {
+        return responseBody;
+      } else if (responseBody is Map && responseBody['data'] != null) {
+        return responseBody['data'];
+      }
+      return responseBody as List;
+    }
+    throw Exception('Failed to load categories');
+  }
+
+  static Future<void> createCategory(Category category) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/categories'),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode(category.toJson()),
+    );
+    if (response.statusCode != 201 && response.statusCode != 200) {
+      final error = json.decode(response.body);
+      throw Exception(error['error'] ?? 'Failed to create category');
+    }
+  }
+
+  // Users
+  static Future<User> getCurrentUser() async {
+    final response = await http.get(Uri.parse('$baseUrl/users/me'));
+    if (response.statusCode == 200) {
+      return User.fromJson(json.decode(response.body));
+    }
+    throw Exception('Failed to load user profile');
+  }
+
+  static Future<void> updateUserProfile(String userId, Map<String, dynamic> data) async {
+    final response = await http.put(
+      Uri.parse('$baseUrl/users/$userId'),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode(data),
+    );
+    if (response.statusCode != 200) {
+      final error = json.decode(response.body);
+      throw Exception(error['error'] ?? 'Failed to update profile');
+    }
   }
 }
 

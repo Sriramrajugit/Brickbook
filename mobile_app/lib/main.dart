@@ -7,6 +7,8 @@ import 'screens/transactions_screen.dart';
 import 'screens/attendance_screen.dart';
 import 'screens/payroll_screen.dart';
 import 'screens/reports_screen.dart';
+import 'screens/categories_screen.dart';
+import 'screens/profile_screen.dart';
 import 'services/sync_manager.dart';
 
 void main() {
@@ -71,6 +73,8 @@ class LedgerApp extends StatelessWidget {
         '/attendance': (context) => const AttendanceScreen(),
         '/payroll': (context) => const PayrollScreen(),
         '/reports': (context) => const ReportsScreen(),
+        '/categories': (context) => const CategoriesScreen(),
+        '/profile': (context) => const ProfileScreen(),
       },
       // Error handling for navigation
       onGenerateRoute: (settings) {
