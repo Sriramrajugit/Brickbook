@@ -10,6 +10,7 @@ interface Employee {
   name: string
   partnerType: string
   status: string
+  salaryFrequency: string
 }
 
 interface AttendanceRecord {
@@ -36,7 +37,9 @@ export default function Attendance() {
         const res = await fetch('/api/employees')
         if (!res.ok) throw new Error('Failed to fetch employees')
         const data = await res.json()
-        setEmployees(data)
+        // Filter to show only active employees, exclude suppliers and contractors
+        const activeEmployees = data.filter((emp: Employee) => emp.partnerType === 'Employee' && emp.status === 'Active')
+        setEmployees(activeEmployees)
       } catch (err) {
         console.error('Error fetching employees:', err)
       } finally {
@@ -216,8 +219,15 @@ export default function Attendance() {
                     >
                       <div className="flex justify-between items-center">
                         <div>
-                          <h4 className="font-medium text-gray-900">
+                          <h4 className="font-medium text-gray-900 flex items-center gap-2">
                             {employee.name}
+                            <span className={`inline-flex items-center justify-center text-xs font-semibold px-2 py-0.5 rounded-full ${
+                              employee.salaryFrequency === 'D'
+                                ? 'bg-blue-100 text-blue-700'
+                                : 'bg-purple-100 text-purple-700'
+                            }`}>
+                              {employee.salaryFrequency === 'D' ? '(D)' : '(M)'}
+                            </span>
                           </h4>
                           <p className="text-sm text-gray-600">
                             Today&apos;s Status:{' '}

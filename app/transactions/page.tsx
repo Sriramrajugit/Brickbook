@@ -83,6 +83,8 @@ export default function Transactions() {
   const [formDescription, setFormDescription] = useState('');
   const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0]);
   const [formPaymentMode, setFormPaymentMode] = useState('G-Pay');
+  const [successMessage, setSuccessMessage] = useState('');
+  const [error, setError] = useState('');
 
   // Load accounts, categories, and transactions once
   useEffect(() => {
@@ -517,14 +519,19 @@ export default function Transactions() {
       setTransactionType('Cash-Out');
       
       // Show success message
-      alert(wasEditMode ? 'Transaction updated successfully!' : 'Transaction saved successfully!');
+      setSuccessMessage(wasEditMode ? 'Transaction updated successfully!' : 'Transaction saved successfully!');
+      setError('');
+      setTimeout(() => setSuccessMessage(''), 3000);
       
       // Refresh transactions list
       setCurrentPage(1);
       await refreshTransactions();
     } catch (err) {
       console.error('Error saving transaction:', err);
-      alert(err instanceof Error ? err.message : 'Failed to save transaction');
+      const errorMsg = err instanceof Error ? err.message : 'Failed to save transaction';
+      setError(errorMsg);
+      setSuccessMessage('');
+      setTimeout(() => setError(''), 3000);
     }
   };
 
@@ -565,6 +572,38 @@ export default function Transactions() {
         <main>
           <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
             <div className="px-4 py-6 sm:px-0">
+              {/* Success Message */}
+              {successMessage && (
+                <div className="bg-green-50 border-l-4 border-green-400 p-4 mb-6">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm text-green-700">{successMessage}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Error Message */}
+              {error && (
+                <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-6">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm text-red-700">{error}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Add Transaction - Only for OWNER and SITE_MANAGER */}
               {canEdit() && (
               <div className="bg-white p-6 rounded-lg shadow mb-6">

@@ -44,14 +44,28 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Get current user for multi-tenancy
-    const { getCurrentUser } = await import('@/lib/auth');
     const user = await getCurrentUser();
     if (!user || !user.companyId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await request.json();
-    const { name, partnerType, etype, salary, salaryFrequency, status } = body;
+    console.log('📥 Full request body:', JSON.stringify(body));
+    
+    const { id, name, partnerType, etype, salary, salaryFrequency, status } = body;
+
+    // Warn if ID is being sent for create (should not be)
+    if (id) {
+      console.warn('⚠️ WARNING: ID field sent in POST request (should be auto-generated):', id);
+    }
+
+    // Validate required fields
+    if (!name || !name.trim()) {
+      return NextResponse.json(
+        { error: 'Name is required', details: 'Please provide a partner name' },
+        { status: 400 }
+      );
+    }
 
     console.log('📥 API received:', { name, partnerType, etype, salary, salaryFrequency, status });
 
@@ -96,7 +110,6 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     // Get current user for multi-tenancy
-    const { getCurrentUser } = await import('@/lib/auth');
     const user = await getCurrentUser();
     if (!user || !user.companyId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -106,7 +119,14 @@ export async function PUT(request: NextRequest) {
     const { id, name, partnerType, etype, salary, salaryFrequency, status } = body
 
     if (!id) {
-      return NextResponse.json({ error: 'Employee ID is required' }, { status: 400 });
+      return NextResponse.json({ error: 'Employee ID is required', details: 'ID is missing' }, { status: 400 });
+    }
+
+    if (!name || !name.trim()) {
+      return NextResponse.json(
+        { error: 'Name is required', details: 'Please provide a partner name' },
+        { status: 400 }
+      );
     }
 
     console.log('📥 API received for update:', { id, name, partnerType, etype, salary, salaryFrequency, status });
@@ -139,6 +159,8 @@ export async function PUT(request: NextRequest) {
   } catch (error) {
     console.error('Error updating employee:', error)
     const errorMsg = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : '';
+    console.error('Detailed error:', { errorMsg, errorStack });
     return NextResponse.json(
       { error: 'Failed to save employee', details: errorMsg },
       { status: 500 },

@@ -13,7 +13,12 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const dateStr = searchParams.get('date')
     
-    let whereClause: any = { companyId }
+    let whereClause: any = { 
+      companyId,
+      employee: {
+        partnerType: 'Employee'  // Filter to show only employees, exclude suppliers and contractors
+      }
+    }
     if (dateStr) {
       // Simple approach: just use the date string, Prisma will convert it
       whereClause.date = {

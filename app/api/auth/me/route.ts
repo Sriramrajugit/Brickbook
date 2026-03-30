@@ -1,26 +1,22 @@
-/*import { NextResponse } from 'next/server'
-import { getCurrentUser } from '@/lib/auth'
-
-export async function GET() {
-  try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-    }
-    return NextResponse.json(user);
-  } catch (error) {
-    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-  }
-}
-*/
-// app/api/auth/me/route.ts
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUserWithFeatures } from '@/lib/auth';
 
 export async function GET() {
-  const user = await getCurrentUser();
-  if (!user) {
+  const userWithFeatures = await getCurrentUserWithFeatures();
+  if (!userWithFeatures) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
-  return NextResponse.json(user);
+  
+  return NextResponse.json({
+    user: {
+      id: userWithFeatures.id,
+      email: userWithFeatures.email,
+      name: userWithFeatures.name,
+      role: userWithFeatures.role,
+      companyId: userWithFeatures.companyId,
+      siteId: userWithFeatures.siteId,
+    },
+    features: userWithFeatures.features,
+    plan: userWithFeatures.plan,
+  });
 }

@@ -23,11 +23,12 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Fetch all active employees for this company
+    // Fetch all active employees for this company (excluding Suppliers and Contractors)
     const employees = await prisma.employee.findMany({
       where: {
         companyId: companyId,
         status: 'Active',
+        partnerType: 'Employee', // Only fetch actual employees, not suppliers or contractors
       },
       select: {
         id: true,
@@ -125,6 +126,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { employeeId, accountId, fromDate, toDate, amount, remarks } = body
 
+    console.log('📥 Payroll POST received:', { employeeId, accountId, fromDate, toDate, amount, remarks })
+
     // Validation
     if (!employeeId || !accountId || !fromDate || !toDate || amount === undefined) {
       return NextResponse.json(
@@ -133,21 +136,64 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if payroll already exists for this employee in the same date range
+    // Get employee to check salary frequency
+    const employee = await prisma.employee.findUnique({
+      where: { id: parseInt(employeeId) },
+      select: { salaryFrequency: true },
+    })
+
+    if (!employee) {
+      return NextResponse.json(
+        { error: 'Employee not found' },
+        { status: 404 }
+      )
+    }
+
+    const fromDateObj = new Date(fromDate);
+    const toDateObj = new Date(toDate);
+
+    // Check if payroll already exists for this employee in OVERLAPPING date ranges
+    // Two ranges overlap if: range1.start <= range2.end AND range1.end >= range2.start
     const existingPayroll = await prisma.payroll.findFirst({
       where: {
         employeeId: parseInt(employeeId),
-        fromDate: new Date(fromDate),
-        toDate: new Date(toDate),
         companyId: companyId,
+        fromDate: { lte: toDateObj },      // Existing payroll starts <= query end date
+        toDate: { gte: fromDateObj },      // Existing payroll ends >= query start date
       },
     })
 
     if (existingPayroll) {
       return NextResponse.json(
-        { error: 'Payroll updates completed for this week' },
+        { error: `Payroll already exists for an overlapping date range (${new Date(existingPayroll.fromDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${new Date(existingPayroll.toDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}). Please select a different date range.` },
         { status: 409 }
       )
+    }
+
+    // For monthly employees, check if payroll already exists for this calendar month
+    if (employee.salaryFrequency === 'M') {
+      // Get first and last day of the month for the period
+      const year = fromDateObj.getFullYear()
+      const month = fromDateObj.getMonth()
+      const monthStart = new Date(year, month, 1)
+      const monthEnd = new Date(year, month + 1, 0)
+
+      // Check for overlapping payrolls in the same calendar month
+      const monthlyPayrollExists = await prisma.payroll.findFirst({
+        where: {
+          employeeId: parseInt(employeeId),
+          companyId: companyId,
+          fromDate: { lte: monthEnd },    // Existing payroll starts <= month end
+          toDate: { gte: monthStart },   // Existing payroll ends >= month start
+        },
+      })
+
+      if (monthlyPayrollExists) {
+        return NextResponse.json(
+          { error: `Monthly payroll already processed for ${monthStart.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}. Monthly employees can only be paid once per month.` },
+          { status: 409 }
+        )
+      }
     }
 
     const payroll = await prisma.payroll.create({
@@ -168,8 +214,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(payroll, { status: 201 })
   } catch (error) {
     console.error('Error creating payroll:', error)
+    const errorMsg = error instanceof Error ? error.message : String(error)
     return NextResponse.json(
-      { error: 'Failed to create payroll record' },
+      { 
+        error: 'Failed to create payroll record',
+        details: errorMsg 
+      },
       { status: 500 }
     )
   }

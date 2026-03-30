@@ -15,7 +15,19 @@
     "lint": "eslint",
     "clean": "rimraf .next node_modules/.cache",
     "clean:all": "rimraf .next node_modules",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "setup:testing": "node scripts/setup-testing.js",
+    "test": "vitest",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration",
+    "test:e2e": "playwright test",
+    "test:all": "npm run test:unit && npm run test:integration && npm run test:e2e",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest --watch",
+    "test:ui": "vitest --ui",
+    "test:debug": "vitest --inspect-brk --inspect --single-thread",
+    "test:report": "node scripts/test-report.js",
+    "release:checklist": "node scripts/release-checklist.js"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

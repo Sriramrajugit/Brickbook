@@ -107,9 +107,26 @@ export default function Employees() {
         setSuccessMessage(editingEmployee ? 'Partner updated successfully!' : 'Partner added successfully!')
         setTimeout(() => setSuccessMessage(''), 3000)
       } else {
-        const errorData = await response.json()
-        const errorMsg = errorData.details || errorData.error || 'Failed to save employee'
-        console.error('API Error:', errorData)
+        let errorMsg = 'Failed to save partner'
+        try {
+          const contentType = response.headers.get('content-type')
+          console.log('Response status:', response.status, 'Content-Type:', contentType)
+          
+          if (contentType && contentType.includes('application/json')) {
+            const errorData = await response.json()
+            console.log('Parsed error data:', errorData)
+            errorMsg = errorData.details || errorData.error || errorMsg
+          } else {
+            const text = await response.text()
+            console.log('Response text:', text)
+            errorMsg = text || `Server error: ${response.status}`
+          }
+        } catch (parseErr) {
+          console.error('Error parsing response:', parseErr)
+          console.error('Response status:', response.status)
+          errorMsg = `Server error: ${response.status}`
+        }
+        console.error('Final error message:', errorMsg)
         setError(errorMsg)
       }
     } catch (err) {

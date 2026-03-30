@@ -7,6 +7,14 @@ const prisma = new PrismaClient()
 type UserRole = 'OWNER' | 'SITE_MANAGER' | 'GUEST'
 
 async function main() {
+  // 🔒 PRODUCTION SAFETY: Prevent seeding in production
+  if (process.env.NODE_ENV === 'production') {
+    console.error('❌ DATABASE SEED BLOCKED: Cannot run seed in production environment')
+    console.error('   This is a safety measure to protect production data.')
+    console.error('   If you need to seed production data, set NODE_ENV=development and re-run.')
+    process.exit(1)
+  }
+
   console.log('🌱 Starting database seed...')
   console.log('DATABASE_URL:', process.env.DATABASE_URL ? 'SET' : 'NOT SET')
 

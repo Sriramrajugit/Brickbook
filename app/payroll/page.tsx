@@ -20,6 +20,7 @@ interface PayrollPreview {
 interface Account {
   id: number;
   name: string;
+  type?: string;
 }
 
 export default function Payroll() {
@@ -35,6 +36,10 @@ export default function Payroll() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [selectedAccount, setSelectedAccount] = useState('All');
+  
+  // Selection states
+  const [selectedEmployees, setSelectedEmployees] = useState<Set<number>>(new Set());
+  const [alreadyPaidEmployees, setAlreadyPaidEmployees] = useState<Set<number>>(new Set());
 
   // Fetch accounts for filter dropdown
   useEffect(() => {
@@ -43,7 +48,11 @@ export default function Payroll() {
         const res = await fetch('/api/accounts');
         if (res.ok) {
           const data = await res.json();
-          setAccounts(data);
+          // Filter out Contract and Supplier accounts - only show Project and General accounts for payroll
+          const filteredAccounts = data.filter((acc: Account) => 
+            acc.type !== 'Contract' && acc.type !== 'Supplier'
+          );
+          setAccounts(filteredAccounts);
         }
       } catch (err) {
         console.error('Error loading accounts:', err);
@@ -69,6 +78,11 @@ export default function Payroll() {
   const monthlyEmployees = payrollPreview.filter(emp => emp.salaryFrequency === 'M');
   const dailyEmployees = payrollPreview.filter(emp => emp.salaryFrequency === 'D');
 
+  // Filter to only selected employees
+  const selectedMonthlyEmployees = monthlyEmployees.filter(emp => selectedEmployees.has(emp.employeeId));
+  const selectedDailyEmployees = dailyEmployees.filter(emp => selectedEmployees.has(emp.employeeId));
+  const selectedPayrollPreview = payrollPreview.filter(emp => selectedEmployees.has(emp.employeeId));
+
   const calculateTotals = (employees: PayrollPreview[]) => {
     return employees.reduce(
       (acc, record) => ({
@@ -80,9 +94,9 @@ export default function Payroll() {
     );
   };
 
-  const monthlyTotals = calculateTotals(monthlyEmployees);
-  const dailyTotals = calculateTotals(dailyEmployees);
-  const totalTotals = calculateTotals(payrollPreview);
+  const monthlyTotals = calculateTotals(selectedMonthlyEmployees);
+  const dailyTotals = calculateTotals(selectedDailyEmployees);
+  const totalTotals = calculateTotals(selectedPayrollPreview);
 
   const totals = {
     grossPay: totalTotals.grossPay,
@@ -90,9 +104,62 @@ export default function Payroll() {
     salaryPaid: totalTotals.salaryPaid
   };
 
+  // Handle individual employee checkbox
+  const handleEmployeeToggle = (employeeId: number) => {
+    if (alreadyPaidEmployees.has(employeeId)) return; // Prevent toggling already paid
+    const newSelected = new Set(selectedEmployees);
+    if (newSelected.has(employeeId)) {
+      newSelected.delete(employeeId);
+    } else {
+      newSelected.add(employeeId);
+    }
+    setSelectedEmployees(newSelected);
+  };
+
+  // Handle "Select All" for monthly employees
+  const handleSelectAllMonthly = (selectAll: boolean) => {
+    const newSelected = new Set(selectedEmployees);
+    monthlyEmployees.forEach((emp) => {
+      if (!alreadyPaidEmployees.has(emp.employeeId)) {
+        if (selectAll) {
+          newSelected.add(emp.employeeId);
+        } else {
+          newSelected.delete(emp.employeeId);
+        }
+      }
+    });
+    setSelectedEmployees(newSelected);
+  };
+
+  // Handle "Select All" for daily employees
+  const handleSelectAllDaily = (selectAll: boolean) => {
+    const newSelected = new Set(selectedEmployees);
+    dailyEmployees.forEach((emp) => {
+      if (!alreadyPaidEmployees.has(emp.employeeId)) {
+        if (selectAll) {
+          newSelected.add(emp.employeeId);
+        } else {
+          newSelected.delete(emp.employeeId);
+        }
+      }
+    });
+    setSelectedEmployees(newSelected);
+  };
+
   // Fetch payroll preview from backend
   useEffect(() => {
     if (!startDate || !endDate) return;
+    
+    // Validate date range
+    const startDateTime = new Date(startDate);
+    const endDateTime = new Date(endDate);
+    if (startDateTime > endDateTime) {
+      setError('From Date must be less than To Date');
+      setPayrollPreview([]);
+      setLoading(false);
+      return;
+    }
+    
     setLoading(true);
     setError('');
     const fetchPayroll = async () => {
@@ -107,7 +174,33 @@ export default function Payroll() {
           throw new Error(errData.details || errData.error || 'Failed to fetch payroll preview');
         }
         const data = await res.json();
-        setPayrollPreview(data);
+        
+        // Check if data is empty and set appropriate message
+        if (!data || data.length === 0) {
+          setError('No records found for this date range. Payroll may have already been processed.');
+          setPayrollPreview([]);
+        } else {
+          setPayrollPreview(data);
+        }
+        
+        // Fetch which employees already have payroll for this period
+        const paidRes = await fetch(`/api/payroll/paid?fromDate=${startDate}&toDate=${endDate}`);
+        if (paidRes.ok) {
+          const paidData = await paidRes.json();
+          const paidIds = new Set(paidData.map((p: any) => p.employeeId));
+          setAlreadyPaidEmployees(paidIds);
+          
+          // Auto-select unpaid employees
+          if (data && data.length > 0) {
+            const unpaidEmployees = new Set<number>();
+            data.forEach((emp: PayrollPreview) => {
+              if (!paidIds.has(emp.employeeId)) {
+                unpaidEmployees.add(emp.employeeId);
+              }
+            });
+            setSelectedEmployees(unpaidEmployees);
+          }
+        }
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : 'Unknown error';
         setError(`Failed to load payroll preview: ${errorMsg}`);
@@ -127,18 +220,30 @@ export default function Payroll() {
   };
 
   const handleSavePayroll = async () => {
-    if (payrollPreview.length === 0) {
-      setError('No payroll records to save.');
-      return;
-    }
-
     if (!startDate || !endDate) {
       setError('Please select a date range first.');
       return;
     }
 
-    // Validate: End date should not be in future
+    // Validate date range
+    const startDateTime = new Date(startDate);
     const endDateTime = new Date(endDate);
+    if (startDateTime > endDateTime) {
+      setError('From Date must be less than To Date');
+      return;
+    }
+
+    if (payrollPreview.length === 0) {
+      setError('No payroll records to save.');
+      return;
+    }
+
+    if (selectedEmployees.size === 0) {
+      setError('Please select at least one employee to save payroll.');
+      return;
+    }
+
+    // Validate: End date should not be in future
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     tomorrow.setHours(0, 0, 0, 0);
@@ -147,6 +252,21 @@ export default function Payroll() {
     if (endDateTime >= tomorrow) {
       setError('Cannot save payroll for future dates. Please select a past or current date range.');
       return;
+    }
+
+    // Check for monthly employees and validate date range makes sense for monthly processing
+    const selectedMonthlyList = selectedMonthlyEmployees;
+    if (selectedMonthlyList.length > 0) {
+      // For monthly employees, ideally the range should be the full month or at least notify
+      const startMonth = new Date(startDate).getMonth();
+      const endMonth = new Date(endDate).getMonth();
+      const startYear = new Date(startDate).getFullYear();
+      const endYear = new Date(endDate).getFullYear();
+      
+      if (startMonth !== endMonth || startYear !== endYear) {
+        setError('For monthly employees, date range should be within the same calendar month. Please adjust your date range.');
+        return;
+      }
     }
 
     try {
@@ -160,59 +280,146 @@ export default function Payroll() {
         return;
       }
 
-      // First, check if payroll already exists for this period and create payroll + transaction records
-      const savePromises = payrollPreview.map(async (record) => {
+      // Save only selected employees
+      const recordsToSave = payrollPreview.filter(record => selectedEmployees.has(record.employeeId));
+      
+      // Double-check: filter out employees who are marked as already paid
+      const recordsToActuallySave = recordsToSave.filter(record => !alreadyPaidEmployees.has(record.employeeId));
+      
+      if (recordsToActuallySave.length === 0) {
+        // Check if all selected employees were already paid
+        const alreadyPaidCount = recordsToSave.filter(r => alreadyPaidEmployees.has(r.employeeId)).length;
+        if (alreadyPaidCount > 0) {
+          setError(`All selected employees already have payroll processed for this period. Please deselect them to continue.`);
+        } else {
+          setError('No employees to save.');
+        }
+        return;
+      }
+
+      const skippedEmployees = recordsToSave.filter(record => alreadyPaidEmployees.has(record.employeeId));
+      if (skippedEmployees.length > 0) {
+        console.warn('⏭️ Skipping already-paid employees:', skippedEmployees.map(e => e.employeeName).join(', '));
+      }
+
+      const savePromises = recordsToActuallySave.map(async (record) => {
         const netBalance = record.salary - record.totalAdvance;
 
         // Step 1: Create payroll record
+        const payrollPayload = {
+          employeeId: record.employeeId,
+          accountId: accountId,
+          fromDate: startDate,
+          toDate: endDate,
+          amount: netBalance,
+          remarks: remarks || null,
+        };
+        console.log('📤 Saving payroll for', record.employeeName, ':', payrollPayload);
+        
         const payrollRes = await fetch('/api/payroll', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            employeeId: record.employeeId,
-            accountId: accountId,
-            fromDate: startDate,
-            toDate: endDate,
-            amount: netBalance,
-            remarks: remarks || null,
-          }),
+          body: JSON.stringify(payrollPayload),
         });
 
-        // Check for 409 conflict (payroll already exists for this week)
+        // Check for 409 conflict
         if (payrollRes.status === 409) {
           const conflictData = await payrollRes.json();
-          throw new Error(conflictData.error || 'Payroll already saved for this week');
+          const errorMsg = conflictData.error || 'Payroll already saved';
+          console.warn(`⚠️ Conflict for ${record.employeeName}: ${errorMsg}`);
+          return { 
+            success: false, 
+            employeeName: record.employeeName,
+            error: errorMsg 
+          };
         }
 
         if (!payrollRes.ok) {
           const errData = await payrollRes.json();
-          throw new Error(errData.error || 'Failed to create payroll record');
+          const errorMsg = errData.details || errData.error || 'Failed to create payroll record';
+          console.error(`❌ Error for ${record.employeeName}: ${errorMsg}`);
+          return { 
+            success: false, 
+            employeeName: record.employeeName,
+            error: errorMsg 
+          };
         }
 
-        // Step 2: Create transaction entry for this employee's salary
-        const transactionRes = await fetch('/api/transactions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            amount: netBalance,
-            description: `Salary for ${record.employeeName}`,
-            category: 'Salary',
-            type: 'Cash-Out',
-            paymentMode: 'Bank Transfer',
-            date: endDate, // Use end date of payroll period
-            accountId: accountId,
-          }),
-        });
+        // Step 2: Create transaction entry only if there's a net balance to pay
+        if (netBalance > 0) {
+          const transactionRes = await fetch('/api/transactions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              amount: netBalance,
+              description: `Salary for ${record.employeeName}`,
+              category: 'Salary',
+              type: 'Cash-Out',
+              paymentMode: 'Bank Transfer',
+              date: endDate, // Use end date of payroll period
+              accountId: accountId,
+            }),
+          });
 
-        if (!transactionRes.ok) {
-          const errData = await transactionRes.json();
-          throw new Error(errData.error || 'Failed to create salary transaction');
+          if (!transactionRes.ok) {
+            const errData = await transactionRes.json();
+            const errorMsg = errData.error || 'Failed to create salary transaction';
+            console.error(`❌ Transaction error for ${record.employeeName}: ${errorMsg}`);
+            return { 
+              success: false, 
+              employeeName: record.employeeName,
+              error: `Payroll saved but transaction failed: ${errorMsg}` 
+            };
+          }
         }
 
-        return { payrollRes, transactionRes };
+        return { success: true, employeeName: record.employeeName };
       });
 
       const results = await Promise.all(savePromises);
+      
+      // Check if all or some failed
+      const failedResults = results.filter((r: any) => !r.success);
+      const successResults = results.filter((r: any) => r.success);
+      
+      // Handle results
+      if (successResults.length > 0) {
+        console.log(`✅ Successfully saved payroll for ${successResults.length} employee(s)`);
+      }
+      
+      if (failedResults.length > 0) {
+        // Separate already-paid errors from other errors
+        const alreadyPaidErrors = failedResults.filter(r => r.error?.includes('already'));
+        const otherErrors = failedResults.filter(r => !r.error?.includes('already'));
+        
+        let errorMsg = '';
+        if (alreadyPaidErrors.length > 0) {
+          errorMsg += `⏭️ Already Paid (${alreadyPaidErrors.length}): ${alreadyPaidErrors.map(r => r.employeeName).join(', ')}\n`;
+        }
+        if (otherErrors.length > 0) {
+          errorMsg += `❌ Failed to Save:\n${otherErrors.map(r => `${r.employeeName}: ${r.error}`).join('\n')}`;
+        }
+        
+        // If some succeeded, show partial success message
+        if (successResults.length > 0) {
+          setError(errorMsg);
+          // Still mark as partial success since some were saved
+          setSaveSuccess(true);
+          setRemarks('');
+          setStartDate('');
+          setEndDate('');
+          setPayrollPreview([]);
+          
+          setTimeout(() => {
+            setSaveSuccess(false);
+          }, 4000);
+          return;
+        } else {
+          // All failed
+          throw new Error(errorMsg);
+        }
+      }
+
 
       // All successful - refresh the payroll data
       setSaveSuccess(true);
@@ -340,7 +547,10 @@ export default function Payroll() {
                     <input
                       type="date"
                       value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
+                      onChange={(e) => {
+                        setStartDate(e.target.value);
+                        setError(''); // Clear error when user changes date
+                      }}
                       className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -349,7 +559,10 @@ export default function Payroll() {
                     <input
                       type="date"
                       value={endDate}
-                      onChange={(e) => setEndDate(e.target.value)}
+                      onChange={(e) => {
+                        setEndDate(e.target.value);
+                        setError(''); // Clear error when user changes date
+                      }}
                       className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -413,12 +626,13 @@ export default function Payroll() {
                         className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                       />
                     </div>
-                    <div className="flex items-end">
+                    <div className="flex items-end gap-2">
                       <button
                         onClick={handleSavePayroll}
-                        className="w-full bg-green-600 text-white px-6 py-2 rounded-md hover:bg-green-700 font-semibold"
+                        disabled={selectedEmployees.size === 0}
+                        className="w-full bg-green-600 text-white px-6 py-2 rounded-md hover:bg-green-700 font-semibold disabled:bg-gray-400 disabled:cursor-not-allowed"
                       >
-                        Save All Payroll Records
+                        Save Payroll ({selectedEmployees.size} Selected)
                       </button>
                     </div>
                   </div>
@@ -432,16 +646,30 @@ export default function Payroll() {
                 {/* MONTHLY EMPLOYEES SECTION */}
                 {monthlyEmployees.length > 0 && (
                 <div className="mb-8">
-                  <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4 rounded">
-                    <h4 className="text-lg font-semibold text-blue-900 flex items-center">
-                      📅 Monthly Employees ({monthlyEmployees.length})
-                    </h4>
-                    <p className="text-sm text-blue-700 mt-1">Fixed monthly salary</p>
+                  <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4 rounded flex justify-between items-center">
+                    <div>
+                      <h4 className="text-lg font-semibold text-blue-900 flex items-center">
+                        📅 Monthly Employees ({monthlyEmployees.length})
+                      </h4>
+                      <p className="text-sm text-blue-700 mt-1">Fixed monthly salary</p>
+                    </div>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={monthlyEmployees.every(emp => selectedEmployees.has(emp.employeeId) || alreadyPaidEmployees.has(emp.employeeId))}
+                        onChange={(e) => handleSelectAllMonthly(e.target.checked)}
+                        className="w-4 h-4 rounded border-gray-300"
+                      />
+                      <span className="text-sm font-medium text-blue-900">Select All</span>
+                    </label>
                   </div>
                   <div className="overflow-x-auto mb-6">
                     <table className="min-w-full divide-y divide-gray-200">
                       <thead className="bg-gray-50">
                         <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Pay
+                          </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Employee
                           </th>
@@ -459,18 +687,33 @@ export default function Payroll() {
                       <tbody className="bg-white divide-y divide-gray-200">
                         {monthlyEmployees.map((record) => {
                           const netBalance = record.salary - record.totalAdvance;
+                          const isPaid = alreadyPaidEmployees.has(record.employeeId);
+                          const isSelected = selectedEmployees.has(record.employeeId);
                           return (
-                            <tr key={record.employeeId}>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                {record.employeeName}
+                            <tr 
+                              key={record.employeeId}
+                              className={isPaid ? 'bg-gray-100 opacity-60' : isSelected ? 'bg-blue-50' : ''}
+                            >
+                              <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => handleEmployeeToggle(record.employeeId)}
+                                  disabled={isPaid}
+                                  className="w-4 h-4 rounded border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                                />
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600 font-medium">
+                              <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${isPaid ? 'text-gray-500 line-through' : 'text-gray-900'}`}>
+                                {record.employeeName}
+                                {isPaid && <span className="ml-2 text-xs bg-gray-300 text-gray-700 px-2 py-1 rounded">Already Paid</span>}
+                              </td>
+                              <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${isPaid ? 'text-gray-500' : 'text-green-600'}`}>
                                 {formatINR(record.salary)}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-orange-600">
+                              <td className={`px-6 py-4 whitespace-nowrap text-sm ${isPaid ? 'text-gray-500' : 'text-orange-600'}`}>
                                 {formatINR(record.totalAdvance)}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-600 font-medium">
+                              <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${isPaid ? 'text-gray-500' : 'text-blue-600'}`}>
                                 {formatINR(netBalance)}
                               </td>
                             </tr>
@@ -479,7 +722,7 @@ export default function Payroll() {
                       </tbody>
                       <tfoot className="bg-blue-100">
                         <tr>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-blue-900">MONTHLY TOTAL</td>
+                          <td colSpan={2} className="px-6 py-4 whitespace-nowrap text-sm font-bold text-blue-900">MONTHLY TOTAL</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-green-600">
                             {formatINR(monthlyTotals.grossPay)}
                           </td>
@@ -499,16 +742,30 @@ export default function Payroll() {
                 {/* DAILY EMPLOYEES SECTION */}
                 {dailyEmployees.length > 0 && (
                 <div className="mb-8">
-                  <div className="bg-amber-50 border-l-4 border-amber-400 p-4 mb-4 rounded">
-                    <h4 className="text-lg font-semibold text-amber-900 flex items-center">
-                      📊 Daily Employees ({dailyEmployees.length})
-                    </h4>
-                    <p className="text-sm text-amber-700 mt-1">Salary based on attendance + OT calculations</p>
+                  <div className="bg-amber-50 border-l-4 border-amber-400 p-4 mb-4 rounded flex justify-between items-center">
+                    <div>
+                      <h4 className="text-lg font-semibold text-amber-900 flex items-center">
+                        📊 Daily Employees ({dailyEmployees.length})
+                      </h4>
+                      <p className="text-sm text-amber-700 mt-1">Salary based on attendance + OT calculations</p>
+                    </div>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={dailyEmployees.every(emp => selectedEmployees.has(emp.employeeId) || alreadyPaidEmployees.has(emp.employeeId))}
+                        onChange={(e) => handleSelectAllDaily(e.target.checked)}
+                        className="w-4 h-4 rounded border-gray-300"
+                      />
+                      <span className="text-sm font-medium text-amber-900">Select All</span>
+                    </label>
                   </div>
                   <div className="overflow-x-auto mb-6">
                     <table className="min-w-full divide-y divide-gray-200">
                       <thead className="bg-gray-50">
                         <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Pay
+                          </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Employee
                           </th>
@@ -541,28 +798,43 @@ export default function Payroll() {
                             return total;
                           }, 0);
                           const netBalance = record.salary - record.totalAdvance;
+                          const isPaid = alreadyPaidEmployees.has(record.employeeId);
+                          const isSelected = selectedEmployees.has(record.employeeId);
                           
                           return (
-                            <tr key={record.employeeId}>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                {record.employeeName}
+                            <tr 
+                              key={record.employeeId}
+                              className={isPaid ? 'bg-gray-100 opacity-60' : isSelected ? 'bg-amber-50' : ''}
+                            >
+                              <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => handleEmployeeToggle(record.employeeId)}
+                                  disabled={isPaid}
+                                  className="w-4 h-4 rounded border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                                />
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                              <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${isPaid ? 'text-gray-500 line-through' : 'text-gray-900'}`}>
+                                {record.employeeName}
+                                {isPaid && <span className="ml-2 text-xs bg-gray-300 text-gray-700 px-2 py-1 rounded">Already Paid</span>}
+                              </td>
+                              <td className={`px-6 py-4 whitespace-nowrap text-sm ${isPaid ? 'text-gray-500' : 'text-gray-700'}`}>
                                 {daysWorked} days
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                              <td className={`px-6 py-4 whitespace-nowrap text-sm ${isPaid ? 'text-gray-500' : 'text-gray-700'}`}>
                                 {otHours > 0 ? `${otHours} hrs` : '-'}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                              <td className={`px-6 py-4 whitespace-nowrap text-sm ${isPaid ? 'text-gray-500' : 'text-gray-600'}`}>
                                 {formatINR(record.baseSalary)}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600 font-medium">
+                              <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${isPaid ? 'text-gray-500' : 'text-green-600'}`}>
                                 {formatINR(record.salary)}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-orange-600">
+                              <td className={`px-6 py-4 whitespace-nowrap text-sm ${isPaid ? 'text-gray-500' : 'text-orange-600'}`}>
                                 {formatINR(record.totalAdvance)}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-600 font-medium">
+                              <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${isPaid ? 'text-gray-500' : 'text-blue-600'}`}>
                                 {formatINR(netBalance)}
                               </td>
                             </tr>
@@ -571,7 +843,7 @@ export default function Payroll() {
                       </tbody>
                       <tfoot className="bg-amber-100">
                         <tr>
-                          <td colSpan={4} className="px-6 py-4 whitespace-nowrap text-sm font-bold text-amber-900">DAILY TOTAL</td>
+                          <td colSpan={5} className="px-6 py-4 whitespace-nowrap text-sm font-bold text-amber-900">DAILY TOTAL</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-green-600">
                             {formatINR(dailyTotals.grossPay)}
                           </td>

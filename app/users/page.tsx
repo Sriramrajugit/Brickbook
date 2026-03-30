@@ -39,6 +39,8 @@ export default function Users() {
   // Users from DB
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [error, setError] = useState('');
   
   // Form states
   const [formEmail, setFormEmail] = useState('');
@@ -158,12 +160,16 @@ export default function Users() {
         throw new Error(error.error || `Failed to ${actionText} user`);
       }
 
-      alert(`User ${actionText}d successfully!`);
+      setSuccessMessage(`User ${actionText}d successfully!`);
+      setError('');
+      setTimeout(() => setSuccessMessage(''), 3000);
       setCurrentPage(1);
       await refreshUsers();
     } catch (err) {
       console.error(`Error ${actionText}ing user:`, err);
-      alert(err instanceof Error ? err.message : `Failed to ${actionText} user`);
+      setError(err instanceof Error ? err.message : `Failed to ${actionText} user`);
+      setSuccessMessage('');
+      setTimeout(() => setError(''), 3000);
     }
   };
 
@@ -171,12 +177,16 @@ export default function Users() {
     e.preventDefault();
 
     if (!formEmail) {
-      alert('Email is required');
+      setError('Email is required');
+      setSuccessMessage('');
+      setTimeout(() => setError(''), 3000);
       return;
     }
 
     if (!isEditMode && !formPassword) {
-      alert('Password is required for new users');
+      setError('Password is required for new users');
+      setSuccessMessage('');
+      setTimeout(() => setError(''), 3000);
       return;
     }
 
@@ -206,14 +216,18 @@ export default function Users() {
         throw new Error(error.error || 'Failed to save user');
       }
 
-      alert(isEditMode ? 'User updated successfully!' : 'User created successfully!');
+      setSuccessMessage(isEditMode ? 'User updated successfully!' : 'User created successfully!');
+      setError('');
+      setTimeout(() => setSuccessMessage(''), 3000);
       
       handleCancelEdit();
       setCurrentPage(1);
       await refreshUsers();
     } catch (err) {
       console.error('Error saving user:', err);
-      alert(err instanceof Error ? err.message : 'Failed to save user');
+      setError(err instanceof Error ? err.message : 'Failed to save user');
+      setSuccessMessage('');
+      setTimeout(() => setError(''), 3000);
     }
   };
 
@@ -244,6 +258,39 @@ export default function Users() {
                 <h3 className="text-lg font-medium text-gray-900 mb-4">
                   {isEditMode ? 'Edit User' : 'Add New User'}
                 </h3>
+                
+                {/* Success Message */}
+                {successMessage && (
+                  <div className="bg-green-50 border-l-4 border-green-400 p-4 mb-6">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0">
+                        <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <p className="text-sm font-medium text-green-800">{successMessage}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Error Message */}
+                {error && (
+                  <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-6">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0">
+                        <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <p className="text-sm font-medium text-red-800">{error}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <form
                   onSubmit={handleSubmit}
                   className="grid grid-cols-1 md:grid-cols-2 gap-4"
