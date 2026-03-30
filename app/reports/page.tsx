@@ -217,7 +217,7 @@ export default function Reports() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col lg:flex-row">
-      <MobileNav />
+      <MobileNav currentPage="reports" />
       <div className="flex-1 lg:ml-0 pt-16 lg:pt-0 lg:ml-64 w-full">
         <div className="max-w-7xl mx-auto p-4 pt-4">
           <h1 className="text-3xl font-bold mb-2">📊 Reports Dashboard</h1>

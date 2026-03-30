@@ -104,7 +104,7 @@ export default function AttendanceReportPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <MobileNav />
+      <MobileNav currentPage="reports" />
       <div className="lg:ml-64 w-full">
         <div className="max-w-7xl mx-auto p-4 pt-4">
           <h1 className="text-3xl font-bold mb-2">📊 Attendance & Salary Report</h1>

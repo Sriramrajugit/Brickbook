@@ -187,7 +187,7 @@ export default function Payroll() {
         const paidRes = await fetch(`/api/payroll/paid?fromDate=${startDate}&toDate=${endDate}`);
         if (paidRes.ok) {
           const paidData = await paidRes.json();
-          const paidIds = new Set(paidData.map((p: any) => p.employeeId));
+          const paidIds = new Set<number>(paidData.map((p: any) => p.employeeId));
           setAlreadyPaidEmployees(paidIds);
           
           // Auto-select unpaid employees

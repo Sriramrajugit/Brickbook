@@ -1,22 +1,20 @@
 import { NextResponse } from 'next/server';
-import { getCurrentUserWithFeatures } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth';
 
 export async function GET() {
-  const userWithFeatures = await getCurrentUserWithFeatures();
-  if (!userWithFeatures) {
+  const user = await getCurrentUser();
+  if (!user) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
   
   return NextResponse.json({
     user: {
-      id: userWithFeatures.id,
-      email: userWithFeatures.email,
-      name: userWithFeatures.name,
-      role: userWithFeatures.role,
-      companyId: userWithFeatures.companyId,
-      siteId: userWithFeatures.siteId,
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      companyId: user.companyId,
+      siteId: user.siteId,
     },
-    features: userWithFeatures.features,
-    plan: userWithFeatures.plan,
   });
 }
