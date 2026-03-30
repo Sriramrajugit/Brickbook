@@ -52,8 +52,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       })
       
       if (response.ok) {
-        const userData = await response.json()
-        setUser(userData)
+        const data = await response.json()
+        // API returns { user: {...} }, extract the user object
+        setUser(data.user || data)
         setIsAuthenticated(true)
         // If on login page and authenticated, redirect to home
         if (pathname === '/login') {
