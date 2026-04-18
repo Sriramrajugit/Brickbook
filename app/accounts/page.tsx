@@ -86,7 +86,7 @@ export default function Accounts() {
       })
       
       if (response.ok) {
-        setFormData({ name: '', type: '', budget: '', startDate: '', endDate: '' })
+        setFormData({ name: '', type: '', budget: '', address: '', startDate: '', endDate: '' })
         setShowForm(false)
         setEditingId(null)
         fetchAccounts()

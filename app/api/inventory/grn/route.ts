@@ -248,7 +248,7 @@ export async function PUT(req: NextRequest) {
     })
   } catch (err) {
     console.error('Error updating GRN:', err)
-    const errorMsg = err instanceof Error ? error.message : 'Failed to update GRN'
+    const errorMsg = err instanceof Error ? err.message : 'Failed to update GRN'
     return NextResponse.json({ error: errorMsg }, { status: 500 })
   }
 }

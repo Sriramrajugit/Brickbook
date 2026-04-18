@@ -66,9 +66,9 @@ export async function getItemsWithReceipt(poId: number) {
 
   if (!po) return []
 
-  return po.items.map(poItem => {
-    const received = poItem.grnItems.reduce((sum, grn) => sum + grn.quantityReceived, 0)
-    const rejected = poItem.grnItems.reduce((sum, grn) => sum + grn.quantityRejected, 0)
+  return po.items.map((poItem: any) => {
+    const received = poItem.grnItems.reduce((sum: any, grn: any) => sum + grn.quantityReceived, 0)
+    const rejected = poItem.grnItems.reduce((sum: any, grn: any) => sum + grn.quantityRejected, 0)
     const accepted = received - rejected
     
     return {
