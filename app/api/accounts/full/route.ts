@@ -30,26 +30,44 @@ export async function GET(_req: NextRequest) {
         zip: true,
         type: true,
         budget: true,
+        startDate: true,
+        endDate: true,
         createdAt: true,
-        updatedAt: true
+        updatedAt: true,
+        transactions: {
+          select: {
+            amount: true,
+            type: true
+          }
+        }
       }
     });
     
     console.log('📋 Found accounts:', accounts.length);
 
     // Return accounts in the expected format
-    const result = accounts.map((account: any) => ({
-      id: account.id,
-      name: account.name,
-      address: account.address || '',
-      city: account.city || '',
-      state: account.state || '',
-      zip: account.zip || '',
-      type: account.type || 'General',
-      budget: account.budget,
-      createdAt: account.createdAt,
-      updatedAt: account.updatedAt,
-    }));
+    const result = accounts.map((account: any) => {
+      // Calculate total spent (only count Cash-Out transactions)
+      const totalSpent = account.transactions
+        .filter((t: any) => t.type === 'Cash-Out')
+        .reduce((sum: number, t: any) => sum + (t.amount || 0), 0);
+
+      return {
+        id: account.id,
+        name: account.name,
+        address: account.address || '',
+        city: account.city || '',
+        state: account.state || '',
+        zip: account.zip || '',
+        type: account.type || 'General',
+        budget: account.budget,
+        startDate: account.startDate,
+        endDate: account.endDate,
+        totalSpent: totalSpent,
+        createdAt: account.createdAt,
+        updatedAt: account.updatedAt,
+      };
+    });
 
     return NextResponse.json({
       data: result,

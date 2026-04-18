@@ -11,7 +11,6 @@ export default function Navigation() {
   const { logout, user } = useAuth()
   const [companyName, setCompanyName] = useState<string>('')
   const [isHydrated, setIsHydrated] = useState(false)
-  const [inventoryOpen, setInventoryOpen] = useState(false)
 
   // Initialize from localStorage on mount (client-side only)
   useEffect(() => {
@@ -71,14 +70,6 @@ export default function Navigation() {
     { href: '/users', label: 'Users' },
   ]
 
-  const inventoryMenuItems = [
-    { href: '/inventory/master', label: 'Inventory Master' },
-    { href: '/inventory/purchase-orders', label: 'Purchase Orders' },
-    { href: '/inventory/grn', label: 'Goods Received Notes' },
-    { href: '/inventory/daywise-usage', label: 'Day-wise Usage' },
-    { href: '/inventory/supplier-payments', label: 'Supplier Payments' },
-  ]
-
   return (
     <nav className="bg-white shadow-md relative z-40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 overflow-visible">
@@ -101,44 +92,6 @@ export default function Navigation() {
                   {item.label}
                 </a>
               ))}
-              
-              {/* Inventory Dropdown Menu */}
-              <div className="relative flex items-center" onMouseLeave={() => setInventoryOpen(false)}>
-                <button
-                  onMouseEnter={() => setInventoryOpen(true)}
-                  onClick={() => setInventoryOpen(!inventoryOpen)}
-                  className={`inline-flex items-center px-3 py-2 text-sm font-medium ${
-                    inventoryMenuItems.some(item => pathname === item.href)
-                      ? 'text-blue-600 border-b-2 border-blue-600'
-                      : 'text-gray-700 hover:text-blue-600'
-                  }`}
-                >
-                  Inventory
-                  <svg className={`ml-1 w-4 h-4 transform transition-transform ${inventoryOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-                
-                {/* Dropdown content */}
-                {inventoryOpen && (
-                  <div className="absolute top-12 left-0 w-56 rounded-md shadow-xl bg-white border border-gray-200 ring-1 ring-black ring-opacity-5 z-50 py-1">
-                    {inventoryMenuItems.map((item, idx) => (
-                      <a
-                        key={item.href}
-                        href={item.href}
-                        onClick={() => setInventoryOpen(false)}
-                        className={`block px-4 py-2 text-sm transition-colors ${
-                          pathname === item.href
-                            ? 'text-blue-600 bg-blue-50'
-                            : 'text-gray-700 hover:bg-gray-100'
-                        } ${idx === 0 ? 'rounded-t-md' : ''} ${idx === inventoryMenuItems.length - 1 ? 'rounded-b-md' : ''}`}
-                      >
-                        {item.label}
-                      </a>
-                    ))}
-                  </div>
-                )}
-              </div>
             </div>
           </div>
           <div className="flex items-center gap-4">

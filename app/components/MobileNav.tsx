@@ -12,7 +12,6 @@ interface MobileNavProps {
 export default function MobileNav({ currentPage }: MobileNavProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [masterExpanded, setMasterExpanded] = useState(false)
-  const [inventoryExpanded, setInventoryExpanded] = useState(false)
   const [companyName, setCompanyName] = useState<string>('')
   const { logout, user } = useAuth()
 
@@ -84,16 +83,7 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
     { href: '/users', label: 'Users', icon: '🔐' },
   ]
 
-  const inventoryItems = [
-    { href: '/inventory/master', label: 'Inventory Master', icon: '📦' },
-    { href: '/inventory/purchase-orders', label: 'Purchase Orders', icon: '🛒' },
-    { href: '/inventory/grn', label: 'Goods Received Notes', icon: '📋' },
-    { href: '/inventory/daywise-usage', label: 'Day-wise Usage', icon: '📊' },
-    { href: '/inventory/supplier-payments', label: 'Supplier Payments', icon: '💳' },
-  ]
-
   const isMasterActive = masterItems.some(item => item.href === currentPage)
-  const isInventoryActive = inventoryItems.some(item => item.href === currentPage)
 
   return (
     <>
@@ -210,46 +200,6 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
           </div>
           )}
 
-          {/* Inventory Menu */}
-          <div>
-            <button
-              onClick={() => setInventoryExpanded(!inventoryExpanded)}
-              className={`w-full flex items-center justify-between px-6 py-3 text-gray-700 hover:bg-gray-200 ${
-                isInventoryActive ? 'bg-gray-100' : ''
-              }`}
-            >
-              <span>
-                <span className="mr-2">📦</span>
-                Inventory
-              </span>
-              <svg
-                className={`w-4 h-4 transform transition-transform ${inventoryExpanded ? 'rotate-180' : ''}`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-            {inventoryExpanded && (
-              <div className="bg-gray-50">
-                {inventoryItems.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setIsOpen(false)}
-                    className={`block px-12 py-2 text-sm text-gray-700 hover:bg-gray-200 ${
-                      currentPage === item.href ? 'bg-gray-200 font-medium' : ''
-                    }`}
-                  >
-                    <span className="mr-2">{item.icon}</span>
-                    {item.label}
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
-          
           {/* Logout Button */}
           <button
             onClick={handleLogout}
