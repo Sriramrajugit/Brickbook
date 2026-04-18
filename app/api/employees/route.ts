@@ -15,14 +15,12 @@ export async function GET(request: NextRequest) {
 
     const employees = await prisma.employee.findMany({
       where: { companyId },
-      // Don't include relations - they can cause performance issues
+      // Select only necessary fields - NO SALARY DATA
       select: {
         id: true,
         name: true,
         partnerType: true,
         etype: true,
-        salary: true,
-        salaryFrequency: true,
         status: true,
         createdAt: true,
         updatedAt: true,

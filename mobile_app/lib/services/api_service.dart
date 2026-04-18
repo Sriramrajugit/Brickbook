@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/account.dart';
 import '../models/company.dart';
 import '../models/employee.dart';
@@ -10,11 +11,38 @@ import '../models/user.dart';
 
 class ApiService {
   // Update this to your backend API URL
-  static const String baseUrl = 'http://192.168.1.15:3000/api';
+  static const String baseUrl = 'http://localhost:3000/api';
+  static String? _token;
+  
+  // Set token (called after login)
+  static void setToken(String token) {
+    _token = token;
+  }
+  
+  // Get token from shared preferences on app startup
+  static Future<void> loadToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    _token = prefs.getString('auth_token');
+  }
+  
+  // Get authorization headers
+  static Map<String, String> _getHeaders() {
+    final headers = {'Content-Type': 'application/json'};
+    if (_token != null) {
+      headers['Authorization'] = 'Bearer $_token';
+      print('✅ Token sent in header: $_token');
+    } else {
+      print('❌ No token available!');
+    }
+    return headers;
+  }
   
   // Companies
   static Future<List<Company>> getCompanies() async {
-    final response = await http.get(Uri.parse('$baseUrl/companies'));
+    final response = await http.get(
+      Uri.parse('$baseUrl/companies'),
+      headers: _getHeaders(),
+    );
     if (response.statusCode == 200) {
       final List<dynamic> data = json.decode(response.body);
       return data.map((json) => Company.fromJson(json)).toList();
@@ -24,7 +52,11 @@ class ApiService {
   
   // Accounts
   static Future<List<Account>> getAccounts() async {
-    final response = await http.get(Uri.parse('$baseUrl/accounts'));
+    final response = await http.get(
+      Uri.parse('$baseUrl/accounts'),
+      headers: _getHeaders(),
+    );
+    print('📊 getAccounts response: ${response.statusCode} - ${response.body}');
     if (response.statusCode == 200) {
       final List<dynamic> data = json.decode(response.body);
       return data.map((json) => Account.fromJson(json)).toList();
@@ -35,7 +67,7 @@ class ApiService {
   static Future<Account> createAccount(String name) async {
     final response = await http.post(
       Uri.parse('$baseUrl/accounts'),
-      headers: {'Content-Type': 'application/json'},
+      headers: _getHeaders(),
       body: json.encode({'name': name}),
     );
     if (response.statusCode == 201) {
@@ -46,7 +78,11 @@ class ApiService {
 
   // Employees
   static Future<List<Employee>> getEmployees() async {
-    final response = await http.get(Uri.parse('$baseUrl/employees'));
+    final response = await http.get(
+      Uri.parse('$baseUrl/employees'),
+      headers: _getHeaders(),
+    );
+    print('👥 getEmployees response: ${response.statusCode} - ${response.body}');
     if (response.statusCode == 200) {
       final List<dynamic> data = json.decode(response.body);
       return data.map((json) => Employee.fromJson(json)).toList();
@@ -57,7 +93,7 @@ class ApiService {
   static Future<Employee> createEmployee(String name, double? salary) async {
     final response = await http.post(
       Uri.parse('$baseUrl/employees'),
-      headers: {'Content-Type': 'application/json'},
+      headers: _getHeaders(),
       body: json.encode({
         'name': name,
         'salary': salary,
@@ -72,26 +108,39 @@ class ApiService {
 
   // Transactions
   static Future<List<Transaction>> getTransactions() async {
-    final response = await http.get(Uri.parse('$baseUrl/transactions?limit=1000'));
+    final response = await http.get(
+      Uri.parse('$baseUrl/transactions?limit=1000'),
+      headers: _getHeaders(),
+    );
+    print('📈 getTransactions request: $baseUrl/transactions?limit=1000');
+    print('📈 getTransactions response status: ${response.statusCode}');
+    print('📈 getTransactions response body: ${response.body}');
+    
     if (response.statusCode == 200) {
       final Map<String, dynamic> result = json.decode(response.body);
       // API returns { data: [...], pagination: {...} }
       final List<dynamic> data = result['data'] ?? [];
       return data.map((json) => Transaction.fromJson(json)).toList();
     }
-    throw Exception('Failed to load transactions');
+    throw Exception('Failed to load transactions - Status: ${response.statusCode}');
   }
 
   static Future<Transaction> createTransaction(Transaction transaction) async {
+    final transactionJson = transaction.toJson();
+    print('📤 Creating transaction with data: $transactionJson');
     final response = await http.post(
       Uri.parse('$baseUrl/transactions'),
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode(transaction.toJson()),
+      headers: _getHeaders(),
+      body: json.encode(transactionJson),
     );
+    print('📤 createTransaction response status: ${response.statusCode}');
+    print('📤 createTransaction response body: ${response.body}');
+    
     if (response.statusCode == 201) {
       return Transaction.fromJson(json.decode(response.body));
     } else {
       final error = json.decode(response.body);
+      print('❌ createTransaction error: $error');
       throw Exception(error['error'] ?? 'Failed to create transaction');
     }
   }
@@ -102,7 +151,10 @@ class ApiService {
     if (date != null) {
       url += '?date=$date';
     }
-    final response = await http.get(Uri.parse(url));
+    final response = await http.get(
+      Uri.parse(url),
+      headers: _getHeaders(),
+    );
     if (response.statusCode == 200) {
       final List<dynamic> data = json.decode(response.body);
       return data.map((json) => Attendance.fromJson(json)).toList();
@@ -113,7 +165,7 @@ class ApiService {
   static Future<Attendance> markAttendance(int employeeId, String date, double status) async {
     final response = await http.post(
       Uri.parse('$baseUrl/attendance'),
-      headers: {'Content-Type': 'application/json'},
+      headers: _getHeaders(),
       body: json.encode({
         'employeeId': employeeId,
         'date': date,
@@ -137,6 +189,7 @@ class ApiService {
   }) async {
     final response = await http.get(
       Uri.parse('$baseUrl/payroll?employeeId=$employeeId&fromDate=$fromDate&toDate=$toDate'),
+      headers: _getHeaders(),
     );
     if (response.statusCode == 200) {
       final Map<String, dynamic> result = json.decode(response.body);
@@ -148,7 +201,10 @@ class ApiService {
 
   // Categories
   static Future<List<dynamic>> getCategories() async {
-    final response = await http.get(Uri.parse('$baseUrl/categories'));
+    final response = await http.get(
+      Uri.parse('$baseUrl/categories'),
+      headers: _getHeaders(),
+    );
     if (response.statusCode == 200) {
       final responseBody = json.decode(response.body);
       // Handle both array and object response formats
@@ -165,7 +221,7 @@ class ApiService {
   static Future<void> createCategory(Category category) async {
     final response = await http.post(
       Uri.parse('$baseUrl/categories'),
-      headers: {'Content-Type': 'application/json'},
+      headers: _getHeaders(),
       body: json.encode(category.toJson()),
     );
     if (response.statusCode != 201 && response.statusCode != 200) {
@@ -176,7 +232,11 @@ class ApiService {
 
   // Users
   static Future<User> getCurrentUser() async {
-    final response = await http.get(Uri.parse('$baseUrl/users/me'));
+    final response = await http.get(
+      Uri.parse('$baseUrl/users/me'),
+      headers: _getHeaders(),
+    );
+    print('👤 getCurrentUser response: ${response.statusCode} - ${response.body}');
     if (response.statusCode == 200) {
       return User.fromJson(json.decode(response.body));
     }
@@ -186,7 +246,7 @@ class ApiService {
   static Future<void> updateUserProfile(String userId, Map<String, dynamic> data) async {
     final response = await http.put(
       Uri.parse('$baseUrl/users/$userId'),
-      headers: {'Content-Type': 'application/json'},
+      headers: _getHeaders(),
       body: json.encode(data),
     );
     if (response.statusCode != 200) {

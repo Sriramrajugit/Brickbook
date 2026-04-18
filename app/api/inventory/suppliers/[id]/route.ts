@@ -35,10 +35,11 @@ export async function PUT(
     });
 
     return NextResponse.json(supplier);
-  } catch (err) {
+  } catch (err: any) {
     console.error('Error updating supplier:', err);
+    const message = err?.message || 'Failed to update supplier';
     return NextResponse.json(
-      { error: 'Failed to update supplier' },
+      { error: message },
       { status: 500 }
     );
   }
@@ -69,10 +70,11 @@ export async function DELETE(
     });
 
     return NextResponse.json({ message: 'Supplier deleted successfully' });
-  } catch (err) {
+  } catch (err: any) {
     console.error('Error deleting supplier:', err);
+    const message = err?.message || 'Failed to delete supplier';
     return NextResponse.json(
-      { error: 'Failed to delete supplier' },
+      { error: message },
       { status: 500 }
     );
   }

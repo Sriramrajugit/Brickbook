@@ -1,5 +1,5 @@
 
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { verify, JwtPayload } from 'jsonwebtoken';
 import { prisma } from '@/lib/prisma';
 
@@ -31,10 +31,26 @@ export function verifyToken(token: string): { userId: number } | null {
 // Export verifyToken for JWT verification (used in logout route)
 export async function getCurrentUser(): Promise<AuthUser | null> {
   try {
+    let token: string | undefined;
+    
+    // Try to get token from cookies (web browsers)
     const cookieStore = await cookies();
-    const token = cookieStore.get('auth-token')?.value;
+    token = cookieStore.get('auth-token')?.value;
+    
+    // If no cookie, try to get Bearer token from Authorization header (mobile/API clients)
+    if (!token) {
+      const headersList = await headers();
+      const authHeader = headersList.get('authorization');
+      if (authHeader?.startsWith('Bearer ')) {
+        token = authHeader.substring(7); // Remove "Bearer " prefix
+        console.log('🔐 Token found in Authorization header');
+      }
+    } else {
+      console.log('🔐 Token found in cookie');
+    }
 
     if (!token) {
+      console.log('❌ No token found in cookie or Authorization header');
       return null;
     }
 

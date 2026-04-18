@@ -10,9 +10,13 @@ import 'screens/reports_screen.dart';
 import 'screens/categories_screen.dart';
 import 'screens/profile_screen.dart';
 import 'services/sync_manager.dart';
+import 'services/api_service.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Load saved token from shared preferences
+  await ApiService.loadToken();
   
   // Start automatic background sync
   SyncManager().startAutoSync();

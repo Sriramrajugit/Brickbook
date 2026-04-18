@@ -93,7 +93,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         title: const Text('My Profile'),
         elevation: 0,
       ),
-      drawer: const DrawerMenu(),
+      drawer: const DrawerMenu(currentRoute: '/profile'),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(

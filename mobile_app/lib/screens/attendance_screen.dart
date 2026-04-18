@@ -18,6 +18,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   bool loading = true;
   Map<int, bool> saving = {};
   String errorMessage = '';
+  bool isMonthlyView = false; // Toggle between daily (false) and monthly (true) view
 
   @override
   void initState() {
@@ -149,45 +150,89 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
-                              'Mark Daily Attendance',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
+                            // View Toggle
                             Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Text('Select Date: '),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: TextButton(
-                                    onPressed: () async {
-                                      final picked = await showDatePicker(
-                                        context: context,
-                                        initialDate: selectedDate,
-                                        firstDate:
-                                            DateTime(2020),
-                                        lastDate: DateTime.now(),
-                                      );
-                                      if (picked != null) {
-                                        setState(() => selectedDate = picked);
-                                        await fetchAttendance();
-                                      }
-                                    },
-                                    child: Text(
-                                      selectedDate
-                                          .toLocal()
-                                          .toString()
-                                          .split(' ')[0],
-                                      style: const TextStyle(
-                                          fontSize: 16),
-                                    ),
+                                const Text(
+                                  'Attendance Management',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
                                   ),
+                                ),
+                                // Toggle button for monthly/daily view
+                                SegmentedButton<bool>(
+                                  segments: const [
+                                    ButtonSegment(label: Text('Daily'), value: false),
+                                    ButtonSegment(label: Text('Monthly'), value: true),
+                                  ],
+                                  selected: {isMonthlyView},
+                                  onSelectionChanged: (Set<bool> newSelection) {
+                                    setState(() => isMonthlyView = newSelection.first);
+                                  },
                                 ),
                               ],
                             ),
+                            const SizedBox(height: 16),
+                            // Conditional content based on view mode
+                            if (!isMonthlyView) ...[
+                              // Daily view
+                              Row(
+                                children: [
+                                  const Text('Select Date: '),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: TextButton(
+                                      onPressed: () async {
+                                        final picked = await showDatePicker(
+                                          context: context,
+                                          initialDate: selectedDate,
+                                          firstDate: DateTime(2020),
+                                          lastDate: DateTime.now(),
+                                        );
+                                        if (picked != null) {
+                                          setState(() => selectedDate = picked);
+                                          await fetchAttendance();
+                                        }
+                                      },
+                                      child: Text(
+                                        selectedDate.toLocal().toString().split(' ')[0],
+                                        style: const TextStyle(fontSize: 16),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ] else ...[
+                              // Monthly view
+                              Row(
+                                children: [
+                                  const Text('Select Month: '),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: TextButton(
+                                      onPressed: () async {
+                                        final picked = await showDatePicker(
+                                          context: context,
+                                          initialDate: selectedDate,
+                                          firstDate: DateTime(2020),
+                                          lastDate: DateTime.now(),
+                                        );
+                                        if (picked != null) {
+                                          setState(() => selectedDate = picked);
+                                          await fetchAttendance();
+                                        }
+                                      },
+                                      child: Text(
+                                        '${selectedDate.month}/${selectedDate.year}',
+                                        style: const TextStyle(fontSize: 16),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ],
                         ),
                       ),

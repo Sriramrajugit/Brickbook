@@ -32,10 +32,12 @@ export default function Home() {
 
   const fetchAccounts = async () => {
     try {
-      const res = await fetch('/api/accounts')
+      // Use /api/accounts/full to get complete account data including budget
+      const res = await fetch('/api/accounts/full')
       if (res.ok) {
-        const data = await res.json()
-        setAccounts(data)
+        const result = await res.json()
+        // /api/accounts/full returns { data: [...], pagination: {...} }
+        setAccounts(result.data || result)
       }
     } catch (err) {
       console.error('Error fetching accounts:', err)

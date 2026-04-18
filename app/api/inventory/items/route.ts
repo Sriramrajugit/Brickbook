@@ -49,10 +49,11 @@ export async function GET(req: NextRequest) {
         totalPages: Math.ceil(total / limit),
       },
     });
-  } catch (err) {
+  } catch (err: any) {
     console.error('Error fetching items:', err);
+    const message = err?.message || 'Failed to fetch items';
     return NextResponse.json(
-      { error: 'Failed to fetch items' },
+      { error: message },
       { status: 500 }
     );
   }
@@ -98,10 +99,11 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json(item, { status: 201 });
-  } catch (err) {
+  } catch (err: any) {
     console.error('Error creating item:', err);
+    const message = err?.message || 'Failed to create item';
     return NextResponse.json(
-      { error: 'Failed to create item' },
+      { error: message },
       { status: 500 }
     );
   }

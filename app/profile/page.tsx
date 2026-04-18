@@ -44,9 +44,9 @@ export default function Profile() {
 
         const res = await fetch('/api/companies');
         if (res.ok) {
-          const companies = await res.json();
-          const comp = companies.find((c: any) => c.id === user.companyId);
-          if (comp) {
+          const comp = await res.json();
+          // /api/companies now returns a single company object (not an array)
+          if (comp && comp.name) {
             setCompany(comp);
             localStorage.setItem(`company_${user.companyId}`, comp.name);
           }

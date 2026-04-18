@@ -95,7 +95,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
         title: const Text('Expense Categories'),
         elevation: 0,
       ),
-      drawer: const DrawerMenu(),
+      drawer: const DrawerMenu(currentRoute: '/categories'),
       body: SingleChildScrollView(
         child: Column(
           children: [

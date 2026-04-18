@@ -49,12 +49,19 @@ export async function POST(request: NextRequest) {
     // Update last login
     await prisma.user.update({
       where: { id: user.id },
-      data: { updatedAt: new Date() }
+      data: { 
+        loginTime: new Date(),
+        updatedAt: new Date() 
+      }
     })
     
     const token = sign({ userId: user.id }, process.env.JWT_SECRET!)
     
-    const response = NextResponse.json({ success: true, userId: user.id })
+    const response = NextResponse.json({ 
+      success: true, 
+      userId: user.id,
+      token: token  // Return token in JSON for mobile clients
+    })
     response.cookies.set('auth-token', token, { 
       httpOnly: true, 
       maxAge: 24*60*60,

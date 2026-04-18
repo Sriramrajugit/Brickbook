@@ -107,7 +107,7 @@ class LocalDatabase {
       'description': transaction.description,
       'category': transaction.category,
       'type': transaction.type,
-      'date': transaction.date,
+      'date': transaction.date.toIso8601String().split('T')[0], // Convert DateTime to YYYY-MM-DD string
       'accountId': transaction.accountId,
       'paymentMode': transaction.paymentMode,
       'synced': 0,

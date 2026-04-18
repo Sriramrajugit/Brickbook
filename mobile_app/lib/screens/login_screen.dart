@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -47,6 +48,25 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       if (response.statusCode == 200) {
+        // Extract token from response
+        final Map<String, dynamic> responseBody = json.decode(response.body);
+        print('🔐 Login response body: $responseBody');
+        final String? token = responseBody['token'];
+        print('🔑 Extracted token: $token');
+        
+        if (token != null) {
+          // Store token in shared preferences
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('auth_token', token);
+          print('✅ Token saved to SharedPreferences');
+          
+          // Set token in ApiService for future requests
+          ApiService.setToken(token);
+          print('✅ Token set in ApiService');
+        } else {
+          print('❌ No token in login response!');
+        }
+        
         // Login successful - company auto-selected from user's profile
         if (!mounted) return;
         Navigator.of(context).pushReplacementNamed('/');
@@ -158,7 +178,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                                 child: TextField(
                                   controller: userIdController,
-                                  keyboardType: TextInputType.emailAddress,
+                                  keyboardType: TextInputType.text,
                                   textInputAction: TextInputAction.next,
                                   decoration: InputDecoration(
                                     hintText: 'Enter email',

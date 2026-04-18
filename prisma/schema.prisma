@@ -10,19 +10,23 @@ datasource db {
 }
 
 model Company {
-  id           Int           @id @default(autoincrement())
-  name         String        @unique
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  accounts     Account[]
-  advances     Advance[]
-  attendances  Attendance[]
-  categories   Category[]
-  employees    Employee[]
-  payrolls     Payroll[]
-  sites        Site[]
-  transactions Transaction[]
-  users        User[]
+  id               Int               @id @default(autoincrement())
+  name             String            @unique
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  accounts         Account[]
+  advances         Advance[]
+  attendances      Attendance[]
+  categories       Category[]
+  employees        Employee[]
+  items            Item[]
+  payrolls         Payroll[]
+  sites            Site[]
+  suppliers        Supplier[]
+  transactions     Transaction[]
+  users            User[]
+  purchaseOrders   PurchaseOrder[]
+  grns             GoodsReceivedNote[]
 
   @@map("companies")
 }
@@ -50,7 +54,8 @@ model User {
   password     String?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
-  logoutTime   DateTime?
+  loginTime    DateTime?     // Last login time for audit
+  logoutTime   DateTime?     // Last logout time for audit
   role         UserRole      @default(GUEST)
   status       String        @default("Active") // User account status: Active/Inactive/Suspended
   siteId       Int?
@@ -70,6 +75,10 @@ model Account {
   updatedAt    DateTime      @updatedAt
   budget       Float         @default(0)
   type         String        @default("General")
+  address      String?
+  city         String?
+  state        String?
+  zip          String?
   siteId       Int?
   endDate      DateTime?
   startDate    DateTime?
@@ -187,10 +196,187 @@ model Advance {
   @@map("advances")
 }
 
-// ==================== INVENTORY MODULE (PREMIUM - NOT YET DEPLOYED) ====================
-// Commented out: Inventory module to be deployed in future release
-// Model definitions preserved for reference but not included in Prisma schema
-// ==================== END INVENTORY MODULE ====================
+// ==================== INVENTORY MODULE ====================
+model Supplier {
+  id               Int               @id @default(autoincrement())
+  name             String
+  email            String?
+  phone            String?
+  address          String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  companyId        Int
+  company          Company           @relation(fields: [companyId], references: [id])
+  items            Item[]
+  purchaseOrders   PurchaseOrder[]
+
+  @@index([companyId])
+  @@map("suppliers")
+}
+
+model Item {
+  id             Int      @id @default(autoincrement())
+  name           String
+  description    String?
+  category       String?
+  unit           String   @default("Bag")
+  openingStock   Float    @default(0)
+  currentStock   Float    @default(0)
+  reorderLevel   Float?
+  defaultRate    Float?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  companyId      Int
+  company        Company  @relation(fields: [companyId], references: [id])
+  suppliers      Supplier[]
+
+  @@index([companyId])
+  @@map("items")
+}
+
+// ==================== PURCHASE ORDER MODULE ====================
+
+model PurchaseOrder {
+  id                Int                    @id @default(autoincrement())
+  poNumber          String                 @unique
+  date              DateTime               @default(now())
+  status            String                 @default("DRAFT") // DRAFT, PENDING, APPROVED, RECEIVED, CANCELLED
+  supplierId        Int
+  supplier          Supplier               @relation(fields: [supplierId], references: [id])
+  
+  // Vendor details (from supplier)
+  vendorName        String
+  vendorContact     String?
+  vendorAddress     String?
+  vendorPhone       String?
+  
+  // Ship to details
+  shipToName        String
+  shipToAddress     String?
+  shipToCity        String?
+  shipToState       String?
+  shipToZip         String?
+  
+  // Additional info
+  requisitioner     String?
+  shipVia           String?
+  fob               String?
+  shippingTerms     String?
+  comments          String?
+  
+  // Financial summary
+  subtotal          Float                  @default(0)
+  taxAmount         Float                  @default(0)
+  shippingAmount    Float                  @default(0)
+  otherAmount       Float                  @default(0)
+  totalAmount       Float                  @default(0)
+  
+  // Relationships
+  items             PurchaseOrderItem[]
+  grns              GoodsReceivedNote[]
+  companyId         Int
+  company           Company                @relation(fields: [companyId], references: [id])
+  
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  
+  @@index([supplierId])
+  @@index([companyId])
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderItem {
+  id                Int                    @id @default(autoincrement())
+  poId              Int
+  purchaseOrder     PurchaseOrder          @relation(fields: [poId], references: [id], onDelete: Cascade)
+  
+  itemCode          String?
+  description       String
+  quantity          Float
+  unitPrice         Float
+  totalPrice        Float
+  
+  grnItems          GoodsReceivedNoteItem[]
+  
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  
+  @@index([poId])
+  @@map("purchase_order_items")
+}
+
+// ==================== GRN (GOODS RECEIVED NOTES) MODULE ====================
+
+model GoodsReceivedNote {
+  id                  Int                     @id @default(autoincrement())
+  grnNumber           String                  @unique
+  poId                Int
+  purchaseOrder       PurchaseOrder           @relation(fields: [poId], references: [id])
+  
+  status              String                  @default("DRAFT")    // DRAFT, RECEIVED, VERIFIED, REJECTED
+  receivedDate        DateTime                @default(now())
+  
+  // Warehouse info
+  warehouseLocation   String?
+  receivedBy          String?
+  verifiedBy          String?
+  
+  // Delivery info
+  transporterName     String?
+  trackingNumber      String?
+  deliveryNotes       String?
+  
+  // Financial summary
+  totalReceivedAmount Float                   @default(0)
+  discrepancies       String?
+  
+  // Relationships
+  items               GoodsReceivedNoteItem[]
+  companyId           Int
+  company             Company                 @relation(fields: [companyId], references: [id])
+  
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+  
+  @@index([poId])
+  @@index([companyId])
+  @@map("goods_received_notes")
+}
+
+model GoodsReceivedNoteItem {
+  id                          Int                     @id @default(autoincrement())
+  grnId                       Int
+  grn                         GoodsReceivedNote       @relation(fields: [grnId], references: [id], onDelete: Cascade)
+  
+  poItemId                    Int
+  poItem                      PurchaseOrderItem       @relation(fields: [poItemId], references: [id])
+  
+  // Receipt details
+  quantityOrdered             Float
+  quantityReceived            Float
+  quantityRejected            Float                   @default(0)
+  quantityAccepted            Float
+  
+  // Item info (snapshot)
+  description                 String
+  unitPrice                   Float
+  receivedAmount              Float
+  
+  // QC Details
+  batchNumber                 String?
+  expiryDate                  DateTime?
+  condition                   String?                 // Good, Damaged, Expired
+  qcNotes                     String?
+  
+  createdAt                   DateTime                @default(now())
+  updatedAt                   DateTime                @updatedAt
+  
+  @@index([grnId])
+  @@index([poItemId])
+  @@map("goods_received_note_items")
+}
+
+// ==================== END GRN MODULE ====================
 
 enum UserRole {
   OWNER

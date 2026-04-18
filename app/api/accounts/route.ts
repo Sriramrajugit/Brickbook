@@ -4,57 +4,52 @@ import { getCurrentUser } from '@/lib/auth';
 
 export async function GET(_req: NextRequest) {
   try {
+    console.log('📋 GET /api/accounts called');
+    
     // Get current user for multi-tenancy
     const user = await getCurrentUser();
+    console.log('📋 getCurrentUser result:', user);
+    
     if (!user || !user.companyId) {
+      console.log('❌ No user or companyId:', { user, companyId: user?.companyId });
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const companyId = user.companyId as number;
+    console.log('📋 Fetching accounts for companyId:', companyId);
 
-    const accounts = await prisma.account.findMany({
-      where: { companyId },
-      orderBy: { name: 'asc' },
-      include: {
-        transactions: {
-          select: {
-            amount: true,
-            type: true,
-          },
-        },
-      },
-    });
+    try {
+      const accounts = await prisma.account.findMany({
+        where: { companyId },
+        orderBy: { name: 'asc' },
+        // Return ONLY id and name - NO sensitive data
+        select: {
+          id: true,
+          name: true,
+        }
+      });
+      
+      console.log('📋 Found accounts:', accounts.length);
 
-    // Calculate balance for each account
-    const accountsWithSpent = accounts.map((account: any) => {
-      const totalCashIn = account.transactions
-        .filter((t: any) => t.type === 'Cash-in' || t.type === 'Cash-In')
-        .reduce((sum: number, t: any) => sum + t.amount, 0);
-      
-      const totalCashOut = account.transactions
-        .filter((t: any) => t.type === 'Cash-out' || t.type === 'Cash-Out')
-        .reduce((sum: number, t: any) => sum + t.amount, 0);
-      
-      const totalSpent = totalCashOut;
-      const balance = account.budget + totalCashIn - totalCashOut;
-      
-      return {
-        id: account.id,
-        name: account.name,
-        type: account.type,
-        budget: account.budget,
-        startDate: account.startDate,
-        endDate: account.endDate,
-        totalSpent,
-        balance,
-      };
-    });
-
-    return NextResponse.json(accountsWithSpent);
+      return NextResponse.json({
+        data: accounts,
+        pagination: {
+          page: 1,
+          limit: 100,
+          total: accounts.length,
+          totalPages: 1
+        }
+      });
+    } catch (dbErr) {
+      console.error('❌ Database error:', dbErr);
+      throw dbErr;
+    }
   } catch (err) {
-    console.error('Error fetching accounts:', err);
+    console.error('❌ Error fetching accounts:', err);
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    console.error('Error details:', errorMsg);
     return NextResponse.json(
-      { error: 'Failed to fetch accounts' },
+      { error: 'Failed to fetch accounts', details: errorMsg },
       { status: 500 },
     );
   }
@@ -72,7 +67,7 @@ export async function POST(req: NextRequest) {
     const companyId = user.companyId as number
 
     const body = await req.json();
-    const { name, type, budget, startDate, endDate } = body;
+    const { name, type, budget, address, startDate, endDate } = body;
 
     if (!name || !type || budget === undefined) {
       return NextResponse.json(
@@ -86,6 +81,7 @@ export async function POST(req: NextRequest) {
         name,
         type,
         budget: parseFloat(budget),
+        address: address || null,
         startDate: startDate ? new Date(startDate) : undefined,
         endDate: endDate ? new Date(endDate) : undefined,
         companyId: companyId,
@@ -122,7 +118,7 @@ export async function PUT(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { name, type, budget, startDate, endDate } = body;
+    const { name, type, budget, address, startDate, endDate } = body;
 
     if (!name || !type || budget === undefined) {
       return NextResponse.json(
@@ -137,6 +133,7 @@ export async function PUT(req: NextRequest) {
         name,
         type,
         budget: parseFloat(budget),
+        address: address || null,
         startDate: startDate ? new Date(startDate) : undefined,
         endDate: endDate ? new Date(endDate) : undefined,
       },

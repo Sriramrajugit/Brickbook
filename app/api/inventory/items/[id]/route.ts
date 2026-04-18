@@ -37,10 +37,11 @@ export async function PUT(
     });
 
     return NextResponse.json(item);
-  } catch (err) {
+  } catch (err: any) {
     console.error('Error updating item:', err);
+    const message = err?.message || 'Failed to update item';
     return NextResponse.json(
-      { error: 'Failed to update item' },
+      { error: message },
       { status: 500 }
     );
   }
@@ -71,10 +72,11 @@ export async function DELETE(
     });
 
     return NextResponse.json({ message: 'Item deleted successfully' });
-  } catch (err) {
+  } catch (err: any) {
     console.error('Error deleting item:', err);
+    const message = err?.message || 'Failed to delete item';
     return NextResponse.json(
-      { error: 'Failed to delete item' },
+      { error: message },
       { status: 500 }
     );
   }

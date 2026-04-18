@@ -90,22 +90,32 @@ export default function Transactions() {
   useEffect(() => {
     const fetchAccounts = async () => {
       try {
+        // /api/accounts returns ONLY id and name (restricted for security)
         const res = await fetch('/api/accounts');
-        if (!res.ok) throw new Error('Failed to fetch accounts');
-        const data = await res.json();
-        setAccounts(data);
+        console.log('📋 Accounts response status:', res.status);
+        if (!res.ok) {
+          const errorData = await res.json();
+          console.error('❌ Accounts API error:', errorData);
+          throw new Error(`Failed to fetch accounts: ${res.status} ${errorData?.error}`);
+        }
+        const response = await res.json();
+        // /api/accounts returns { data: [...], pagination: {...} }
+        const accountsList = response.data || response;
+        console.log('📋 Accounts loaded:', accountsList);
+        setAccounts(accountsList);
         // Set first account as default
-        if (data.length > 0) {
-          setSelectedAccount(data[0].id.toString());
+        if (Array.isArray(accountsList) && accountsList.length > 0) {
+          setSelectedAccount(accountsList[0].id.toString());
         }
       } catch (err) {
-        console.error('Error loading accounts:', err);
+        console.error('❌ Error loading accounts:', err);
       }
     };
 
     const fetchCategories = async () => {
       try {
-        const res = await fetch('/api/categories');
+        // Use minimal endpoint - returns ONLY id and name
+        const res = await fetch('/api/categories/minimal');
         if (!res.ok) throw new Error('Failed to fetch categories');
         const data = await res.json();
         setCategories(data);
@@ -116,12 +126,11 @@ export default function Transactions() {
 
     const fetchEmployees = async () => {
       try {
-        const res = await fetch('/api/employees');
+        // Use minimal endpoint - returns ONLY id and name
+        const res = await fetch('/api/employees/minimal');
         if (!res.ok) throw new Error('Failed to fetch employees');
         const data = await res.json();
-        // Filter only active employees
-        const activeEmployees = data.filter((emp: Employee) => emp.status === 'Active');
-        setEmployees(activeEmployees);
+        setEmployees(data);
       } catch (err) {
         console.error('Error loading employees:', err);
       }

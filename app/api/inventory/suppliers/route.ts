@@ -49,10 +49,11 @@ export async function GET(req: NextRequest) {
         totalPages: Math.ceil(total / limit),
       },
     });
-  } catch (err) {
+  } catch (err: any) {
     console.error('Error fetching suppliers:', err);
+    const message = err?.message || 'Failed to fetch suppliers';
     return NextResponse.json(
-      { error: 'Failed to fetch suppliers' },
+      { error: message },
       { status: 500 }
     );
   }
@@ -94,10 +95,11 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json(supplier, { status: 201 });
-  } catch (err) {
+  } catch (err: any) {
     console.error('Error creating supplier:', err);
+    const message = err?.message || 'Failed to create supplier';
     return NextResponse.json(
-      { error: 'Failed to create supplier' },
+      { error: message },
       { status: 500 }
     );
   }

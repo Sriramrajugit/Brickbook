@@ -1,384 +1,210 @@
-# Deployment Guide - BigRock Hosting
+# Production Deployment Guide
+# Reports + Payroll Fixes Release
+# Generated: 2026-03-30
 
 ## Prerequisites
+- Root/sudo access to production server
+- PostgreSQL admin access
+- Node.js 20+ installed
+- Git access with pull permissions
+- Backup of current database
 
-Your BigRock hosting must have:
-- ✅ VPS or Dedicated Server (Shared hosting won't work for Next.js + PostgreSQL)
-- ✅ SSH access
-- ✅ Root or sudo privileges
-- ✅ Domain name configured
+## Deployment Package Contents
+- PRODUCTION_DEPLOYMENT.patch - All code changes
+- DEPLOY_WINDOWS.bat - Windows deployment script
+- DEPLOY_LINUX.sh - Linux deployment script
+- PRODUCTION_SAFETY_CHECKLIST.md - Safety procedures
+- PRODUCTION_DEPLOYMENT_MANIFEST.md - Complete manifest
 
-## Deployment Steps
+## Quick Deploy Commands
 
-### Step 1: Server Setup
-
-**Connect to your server via SSH:**
+### Linux/Mac
 ```bash
-ssh username@your-domain.com
-# or
-ssh username@your-server-ip
-```
+# 1. Backup database
+pg_dump -U postgres -d ledger_prod > backup_$(date +%Y%m%d_%H%M%S).sql 2>&1
 
-**Update system packages:**
-```bash
-sudo apt update
-sudo apt upgrade -y
-```
+# 2. Navigate to project
+cd /path/to/ledger
 
-### Step 2: Install Node.js
+# 3. Apply patch
+git apply --check PRODUCTION_DEPLOYMENT.patch  # Dry-run first
+git apply PRODUCTION_DEPLOYMENT.patch
 
-```bash
-# Install Node.js 20.x (LTS)
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-sudo apt install -y nodejs
-
-# Verify installation
-node --version  # Should show v20.x.x
-npm --version   # Should show 10.x.x
-```
-
-### Step 3: Install PostgreSQL
-
-```bash
-# Install PostgreSQL
-sudo apt install postgresql postgresql-contrib -y
-
-# Start PostgreSQL service
-sudo systemctl start postgresql
-sudo systemctl enable postgresql
-
-# Create database and user
-sudo -u postgres psql
-
-# In PostgreSQL prompt, run:
-CREATE DATABASE ledger_db;
-CREATE USER ledger_user WITH ENCRYPTED PASSWORD 'your-secure-password-here';
-GRANT ALL PRIVILEGES ON DATABASE ledger_db TO ledger_user;
-\q
-```
-
-### Step 4: Install PM2 (Process Manager)
-
-```bash
-sudo npm install -g pm2
-```
-
-### Step 5: Upload Your Application
-
-**Option A: Using Git (Recommended)**
-```bash
-# Install git if not already installed
-sudo apt install git -y
-
-# Clone your repository (if you have it on GitHub)
-cd /var/www
-sudo git clone https://github.com/yourusername/ledger.git
-cd ledger/web
-
-# Or create directory and upload files
-sudo mkdir -p /var/www/ledger
-cd /var/www/ledger
-```
-
-**Option B: Using FTP/SCP**
-```bash
-# From your local machine, upload the web folder:
-scp -r "c:\My Data\Workspace\Ledger\web" username@your-server:/var/www/ledger/
-```
-
-### Step 6: Configure Environment Variables
-
-```bash
-cd /var/www/ledger/web
-
-# Create production .env file
-sudo nano .env
-```
-
-**Add the following (replace with your actual values):**
-```env
-DATABASE_URL="postgresql://ledger_user:your-secure-password-here@localhost:5432/ledger_db?schema=public"
-JWT_SECRET="your-super-secret-jwt-key-change-this-in-production-make-it-very-long-and-random"
-NODE_ENV="production"
-```
-
-Save and exit (Ctrl+X, then Y, then Enter)
-
-### Step 7: Install Dependencies and Build
-
-```bash
-cd /var/www/ledger/web
-
-# Install dependencies
+# 4. Build and deploy
 npm install
-
-# Generate Prisma client
-npx prisma generate
-
-# Run database migrations
-npx prisma migrate deploy
-
-# Seed initial data (sites, users, categories)
-npx prisma db seed
-
-# Build the application
 npm run build
+npm start
 ```
 
-### Step 8: Start Application with PM2
+### Windows PowerShell
+```powershell
+# 1. Backup database
+pg_dump -U postgres -d ledger_prod > "backup_$(Get-Date -Format 'yyyyMMdd_HHmmss').sql"
 
-```bash
-cd /var/www/ledger/web
-
-# Start the app with PM2
-pm2 start npm --name "ledger-app" -- start
-
-# Save PM2 configuration
-pm2 save
-
-# Set PM2 to start on boot
-pm2 startup
-
-# Check if app is running
-pm2 status
-pm2 logs ledger-app
-```
-
-### Step 9: Install and Configure Nginx
-
-```bash
-# Install Nginx
-sudo apt install nginx -y
-
-# Create Nginx configuration
-sudo nano /etc/nginx/sites-available/ledger
-```
-
-**Add this configuration (replace your-domain.com):**
-```nginx
-server {
-    listen 80;
-    server_name your-domain.com www.your-domain.com;
-
-    location / {
-        proxy_pass http://localhost:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_cache_bypass $http_upgrade;
-    }
-}
-```
-
-**Enable the site:**
-```bash
-# Create symbolic link
-sudo ln -s /etc/nginx/sites-available/ledger /etc/nginx/sites-enabled/
-
-# Test Nginx configuration
-sudo nginx -t
-
-# Restart Nginx
-sudo systemctl restart nginx
-```
-
-### Step 10: Install SSL Certificate (HTTPS)
-
-```bash
-# Install Certbot
-sudo apt install certbot python3-certbot-nginx -y
-
-# Get SSL certificate
-sudo certbot --nginx -d your-domain.com -d www.your-domain.com
-
-# Follow the prompts:
-# - Enter your email
-# - Agree to terms
-# - Choose whether to redirect HTTP to HTTPS (choose 2 for redirect)
-
-# Test auto-renewal
-sudo certbot renew --dry-run
-```
-
-### Step 11: Configure Firewall
-
-```bash
-# Allow SSH, HTTP, and HTTPS
-sudo ufw allow ssh
-sudo ufw allow 'Nginx Full'
-sudo ufw enable
-
-# Check status
-sudo ufw status
-```
-
-### Step 12: Domain Configuration in BigRock
-
-1. **Login to BigRock control panel**
-2. **Go to Domain Management**
-3. **Update DNS Settings:**
-   - **A Record**: Point to your server IP address
-     - Host: `@` (root domain)
-     - Points to: `Your-Server-IP`
-     - TTL: 14400
-   
-   - **CNAME Record** (for www):
-     - Host: `www`
-     - Points to: `your-domain.com`
-     - TTL: 14400
-
-4. **Wait for DNS propagation** (can take 1-48 hours)
-
-### Step 13: Verify Deployment
-
-```bash
-# Check if app is running
-pm2 status
-
-# Check Nginx status
-sudo systemctl status nginx
-
-# Check logs if there are issues
-pm2 logs ledger-app
-sudo tail -f /var/log/nginx/error.log
-```
-
-**Test your website:**
-- Visit: `https://your-domain.com`
-- You should see the login page
-
-## Common PM2 Commands
-
-```bash
-# View app status
-pm2 status
-
-# View logs
-pm2 logs ledger-app
-
-# Restart app
-pm2 restart ledger-app
-
-# Stop app
-pm2 stop ledger-app
-
-# Start app
-pm2 start ledger-app
-
-# View detailed info
-pm2 info ledger-app
-```
-
-## Updating the Application
-
-```bash
-# Stop the app
-pm2 stop ledger-app
-
-# Pull latest changes (if using git)
-cd /var/www/ledger/web
-sudo git pull
-
-# Or upload new files via SCP/FTP
-
-# Install new dependencies
+# 2. Navigate and deploy
+cd C:\path\to\ledger
+git apply PRODUCTION_DEPLOYMENT.patch
 npm install
-
-# Run new migrations
-npx prisma migrate deploy
-
-# Rebuild
 npm run build
-
-# Restart
-pm2 restart ledger-app
+npm start
 ```
 
-## Database Backup
+## Testing the Deployment
 
+### 1. Verify API Endpoints
 ```bash
-# Create backup script
-sudo nano /home/backup-ledger.sh
+# Test authentication
+curl http://localhost:3000/api/auth/me
+
+# Test payroll overlap detection (should work now)
+curl http://localhost:3000/api/payroll
+
+# Test reports
+curl http://localhost:3000/api/reports/attendance
 ```
 
-**Add:**
+### 2. Test Reports Page
+1. Navigate to `http://your-server/reports`
+2. Click on "Attendance" tab
+3. Select date range
+4. Click "Export to CSV" - should download CSV file
+5. Switch to "Transactions" tab
+6. Click "Export to Excel" - should download XLSX file
+
+### 3. Test Payroll Fixes
+1. Go to Payroll page
+2. Try creating overlapping payroll dates → should show error
+3. Try creating duplicate for monthly employee → should prevent with clear message
+
+## Rollback Plan
+
+If critical issues occur:
+
+### Immediate Rollback
 ```bash
-#!/bin/bash
-BACKUP_DIR="/home/backups/ledger"
-DATE=$(date +%Y%m%d_%H%M%S)
-mkdir -p $BACKUP_DIR
+# Revert code changes
+git revert HEAD
 
-# Backup database
-PGPASSWORD='your-secure-password-here' pg_dump -U ledger_user -h localhost ledger_db > $BACKUP_DIR/ledger_db_$DATE.sql
+# Restore database from backup
+psql -U postgres -d ledger_prod < backup_YYYYMMDD_HHMMSS.sql
 
-# Keep only last 7 days of backups
-find $BACKUP_DIR -name "*.sql" -mtime +7 -delete
-
-echo "Backup completed: $DATE"
+# Rebuild and restart
+npm run build
+npm start
 ```
 
-**Make executable and schedule:**
+### Verify Rollback
 ```bash
-sudo chmod +x /home/backup-ledger.sh
-
-# Add to crontab (daily at 2 AM)
-crontab -e
-
-# Add this line:
-0 2 * * * /home/backup-ledger.sh
+curl http://localhost:3000/api/auth/me  # Should work
 ```
-
-## Security Checklist
-
-- [ ] PostgreSQL only listens on localhost
-- [ ] Strong database password set
-- [ ] JWT_SECRET is random and secure
-- [ ] Firewall configured (UFW)
-- [ ] SSL certificate installed
-- [ ] Regular backups scheduled
-- [ ] Keep system updated: `sudo apt update && sudo apt upgrade`
 
 ## Troubleshooting
 
-### App won't start
+### "Patch apply failed"
+- Ensure you're on the correct git branch: `git branch`
+- Check for uncommitted changes: `git status`
+- Apply with more verbosity: `git apply -v PRODUCTION_DEPLOYMENT.patch`
+
+### "Module not found after npm install"
 ```bash
-pm2 logs ledger-app
-# Check for errors in the logs
+rm -rf node_modules package-lock.json
+npm cache clean --force
+npm install
+npm run build
 ```
 
-### Database connection error
+### "Database connection error"
+- Check DATABASE_URL is set correctly
+- Verify PostgreSQL is running
+- Check credentials: `psql -U postgres -c "SELECT 1"`
+
+### "Payroll overlap still allows duplicates"
+- Clear Prisma cache: `rm -rf node_modules/.prisma`
+- Regenerate client: `npx prisma generate`
+- Restart application: `npm start`
+
+## Monitoring Post-Deployment
+
+### Check Logs
 ```bash
-# Test PostgreSQL connection
-psql -U ledger_user -d ledger_db -h localhost
-# If it fails, check DATABASE_URL in .env
+# Last 50 lines
+tail -n 50 /var/log/ledger/app.log
+
+# Watch logs in real-time (if using PM2)
+pm2 logs ledger
 ```
 
-### Nginx 502 Bad Gateway
+### Database Health Check
+```sql
+-- Check payroll table structure
+\d payrolls
+
+-- Verify records can be created
+SELECT COUNT(*) FROM payrolls;
+
+-- Check for errors
+SELECT * FROM payrolls WHERE id = (SELECT MAX(id) FROM payrolls);
+```
+
+### Application Health Check
 ```bash
-# Check if app is running
+# Check if app is responding
+curl -s http://localhost:3000/api/auth/me | jq .
+
+# Check process status (if using PM2)
 pm2 status
-
-# Check Nginx logs
-sudo tail -f /var/log/nginx/error.log
 ```
 
-### Can't access via domain
-```bash
-# Check DNS propagation
-nslookup your-domain.com
+## Success Indicators
 
-# Check Nginx is running
-sudo systemctl status nginx
-```
+✅ All endpoints responding without errors
+✅ Payroll overlap detection working (409 on duplicate)
+✅ Reports page loads data correctly
+✅ CSV/XLSX exports working
+✅ No database errors in logs
+✅ Users can access all features without authentication issues
+✅ Performance metrics similar to pre-deployment
+
+## Post-Deployment Checklist
+
+- [ ] Database backup created and verified
+- [ ] Patch applied successfully
+- [ ] npm install completed without errors
+- [ ] npm run build succeeded
+- [ ] Application started (npm start or pm2)
+- [ ] All API endpoints tested
+- [ ] Reports page tested with date ranges
+- [ ] CSV/XLSX exports tested
+- [ ] Payroll overlap detection tested
+- [ ] Users notified of new features
+- [ ] Monitoring/alerts configured
+- [ ] Rollback backup location documented
 
 ## Support
 
-If you encounter issues:
-1. Check PM2 logs: `pm2 logs ledger-app`
-2. Check Nginx logs: `sudo tail -f /var/log/nginx/error.log`
-3. Verify database connection: `npx prisma db pull`
-4. Restart services: `pm2 restart ledger-app && sudo systemctl restart nginx`
+If issues occur:
+1. Check logs first: application error log
+2. Test with: `curl http://localhost:3000/api/auth/me`
+3. Rollback if critical: Follow "Rollback Plan" section above
+4. Contact development team with logs and error details
+
+## Summary of Changes
+
+**Files Modified**: 13
+- API routes: 4 files (payroll, attendance, employees, auth)
+- Pages: 7 files (reports, payroll, attendance, employees, etc.)
+- Configuration: 2 files (package.json, tsconfig.json)
+
+**New Features**: 
+- Reports with attendance analytics
+- Payroll overlap detection (critical fix)
+- Enhanced error handling
+
+**Database Changes**: NONE (backward compatible)
+
+**Deployment Time**: ~5 minutes (including build)
+**Estimated Downtime**: ~1-2 minutes (during rebuild)
+**Risk Level**: LOW (all changes additive/filtering only)
+
+---
+**Deployment Ready!** 🚀

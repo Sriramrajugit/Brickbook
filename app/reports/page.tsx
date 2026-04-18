@@ -81,9 +81,11 @@ export default function Reports() {
     const fetchData = async () => {
       try {
         setTransLoading(true)
-        const accountsRes = await fetch('/api/accounts')
+        const accountsRes = await fetch('/api/accounts/full')
         if (accountsRes.ok) {
-          setAccounts(await accountsRes.json())
+          const response = await accountsRes.json()
+          // /api/accounts/full returns { data: [...], pagination: {...} }
+          setAccounts(response.data || response)
         }
 
         const transactionsRes = await fetch(`/api/transactions?limit=1000&startDate=${transStartDate}&endDate=${transEndDate}`)

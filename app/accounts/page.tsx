@@ -9,6 +9,7 @@ type Account = {
   name: string
   type: string
   budget: number
+  address?: string | null
   startDate?: string | null
   endDate?: string | null
   totalSpent?: number
@@ -25,6 +26,7 @@ export default function Accounts() {
     name: '',
     type: '',
     budget: '',
+    address: '',
     startDate: '',
     endDate: ''
   })
@@ -35,12 +37,13 @@ export default function Accounts() {
 
   const fetchAccounts = async () => {
     try {
-      const response = await fetch('/api/accounts')
-      const data = await response.json()
-      if (Array.isArray(data)) {
-        setAccounts(data)
+      const response = await fetch('/api/accounts/full')
+      const result = await response.json()
+      // API returns { data: [...], pagination: {...} }
+      if (result.data && Array.isArray(result.data)) {
+        setAccounts(result.data)
       } else {
-        console.error('Invalid data format:', data)
+        console.error('Invalid data format:', result)
         setAccounts([])
       }
     } catch (error) {
@@ -76,6 +79,7 @@ export default function Accounts() {
           name: formData.name,
           type: formData.type,
           budget: parseFloat(formData.budget),
+          address: formData.address || null,
           startDate: formData.startDate || null,
           endDate: formData.endDate || null
         })
@@ -97,6 +101,7 @@ export default function Accounts() {
       name: account.name,
       type: account.type,
       budget: account.budget.toString(),
+      address: account.address || '',
       startDate: account.startDate ? account.startDate.split('T')[0] : '',
       endDate: account.endDate ? account.endDate.split('T')[0] : ''
     })
@@ -105,7 +110,7 @@ export default function Accounts() {
   }
 
   const handleCancel = () => {
-    setFormData({ name: '', type: '', budget: '', startDate: '', endDate: '' })
+    setFormData({ name: '', type: '', budget: '', address: '', startDate: '', endDate: '' })
     setEditingId(null)
     setShowForm(false)
   }
@@ -217,7 +222,19 @@ export default function Accounts() {
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          📅 Account Start Date
+                          � Address
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.address}
+                          onChange={(e) => setFormData({...formData, address: e.target.value})}
+                          className="w-full p-2 border border-gray-300 rounded-lg"
+                          placeholder="e.g., 123 Main St, City, State"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          �📅 Account Start Date
                         </label>
                         <input
                           type="date"
@@ -271,7 +288,8 @@ export default function Accounts() {
                         <tr>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">📝 Account Name</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">🏷️ Account Type</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">💰 Budget Planned</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">� Address</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">�💰 Budget Planned</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">📅 Start Date</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">📅 End Date</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">💸 Expense So Far</th>
@@ -293,6 +311,7 @@ export default function Accounts() {
                             <tr key={account.id}>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{account.name}</td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{account.type}</td>
+                              <td className="px-6 py-4 text-sm text-gray-600">{account.address || '-'}</td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatINR(account.budget)}</td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{formatDate(account.startDate)}</td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{formatDate(account.endDate)}</td>

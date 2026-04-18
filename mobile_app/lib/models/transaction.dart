@@ -37,33 +37,36 @@ class Transaction {
 
   factory Transaction.fromJson(Map<String, dynamic> json) {
     return Transaction(
-      id: json['id'],
+      id: json['id'] as int? ?? 0,
       amount: (json['amount'] as num).toDouble(),
-      description: json['description'],
-      category: json['category'],
-      type: json['type'],
-      paymentMode: json['paymentMode'] ?? 'G-Pay',
-      date: DateTime.parse(json['date']),
-      accountId: json['accountId'],
-      categoryId: json['categoryId'],
-      createdBy: json['createdBy'],
-      companyId: json['companyId'],
-      siteId: json['siteId'],
+      description: json['description'] as String?,
+      category: json['category'] as String? ?? '',
+      type: json['type'] as String? ?? '',
+      paymentMode: json['paymentMode'] as String? ?? 'G-Pay',
+      date: json['date'] != null ? DateTime.parse(json['date'].toString()) : DateTime.now(),
+      accountId: json['accountId'] as int? ?? 0,
+      categoryId: json['categoryId'] as int?,
+      createdBy: json['createdBy'] as int?,
+      companyId: json['companyId'] as int? ?? 1,
+      siteId: json['siteId'] as int?,
       account: json['account'] != null ? Account.fromJson(json['account']) : null,
-      createdAt: DateTime.parse(json['createdAt']),
-      updatedAt: DateTime.parse(json['updatedAt']),
+      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt'].toString()) : DateTime.now(),
+      updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt'].toString()) : DateTime.now(),
     );
   }
 
   Map<String, dynamic> toJson() {
-    return {
+    final json = {
       'amount': amount,
       'description': description,
       'category': category,
       'type': type,
       'paymentMode': paymentMode,
-      'date': date.toIso8601String().split('T')[0],
+      'date': date.toIso8601String().split('T')[0],  // Format as YYYY-MM-DD
       'accountId': accountId,
+      'companyId': companyId,
     };
+    print('📤 Transaction.toJson(): $json');
+    return json;
   }
 }

@@ -45,11 +45,13 @@ export default function Payroll() {
   useEffect(() => {
     const fetchAccounts = async () => {
       try {
-        const res = await fetch('/api/accounts');
+        const res = await fetch('/api/accounts/full');
         if (res.ok) {
-          const data = await res.json();
+          const response = await res.json();
+          // /api/accounts/full returns { data: [...], pagination: {...} }
+          const accountsList = response.data || response;
           // Filter out Contract and Supplier accounts - only show Project and General accounts for payroll
-          const filteredAccounts = data.filter((acc: Account) => 
+          const filteredAccounts = accountsList.filter((acc: Account) => 
             acc.type !== 'Contract' && acc.type !== 'Supplier'
           );
           setAccounts(filteredAccounts);

@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../services/offline_api_service.dart';
 import '../models/transaction.dart';
 import '../models/account.dart';
+import '../models/category.dart';
 import '../widgets/drawer_menu.dart';
 
 class TransactionsScreen extends StatefulWidget {
@@ -15,14 +16,18 @@ class TransactionsScreen extends StatefulWidget {
 class _TransactionsScreenState extends State<TransactionsScreen> {
   List<Transaction> transactions = [];
   List<Account> accounts = [];
+  List<Category> categories = [];
   bool isLoading = true;
   
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   int? _selectedAccountId;
   String _selectedType = 'Cash-Out';
-  String _selectedCategory = 'Other';
+  String? _selectedCategory;
   DateTime _selectedDate = DateTime.now();
+
+  // Income categories (these will auto-select Cash-In)
+  final List<String> incomeCategories = ['Salary', 'Bonus', 'Commission', 'Interest', 'Dividend', 'Refund'];
 
   @override
   void initState() {
@@ -35,11 +40,26 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       setState(() => isLoading = true);
       final txData = await OfflineApiService.getTransactions();
       final accData = await OfflineApiService.getAccounts();
+      final catData = await OfflineApiService.getCategories();
+      
+      // Convert dynamic list to Category list
+      final categoryList = <Category>[];
+      for (var cat in catData) {
+        if (cat is Map<String, dynamic>) {
+          categoryList.add(Category.fromJson(cat));
+        }
+      }
+      
       setState(() {
         transactions = txData;
         accounts = accData;
+        categories = categoryList;
         if (accounts.isNotEmpty && _selectedAccountId == null) {
           _selectedAccountId = accounts.first.id;
+        }
+        if (categories.isNotEmpty && _selectedCategory == null) {
+          _selectedCategory = categories.first.name;
+          _updateTypeBasedOnCategory(categories.first.name);
         }
         isLoading = false;
       });
@@ -51,6 +71,17 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         );
       }
     }
+  }
+
+  // Auto-select transaction type based on category
+  void _updateTypeBasedOnCategory(String categoryName) {
+    setState(() {
+      if (incomeCategories.contains(categoryName)) {
+        _selectedType = 'Cash-In';
+      } else {
+        _selectedType = 'Cash-Out';
+      }
+    });
   }
 
   Future<void> createTransaction() async {
@@ -66,7 +97,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         id: 0,
         amount: double.parse(_amountController.text),
         description: _descriptionController.text,
-        category: _selectedCategory,
+        category: _selectedCategory ?? 'Other',  // Use default if null
         type: _selectedType,
         date: _selectedDate,
         accountId: _selectedAccountId!,
@@ -123,14 +154,10 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                 onChanged: (value) => setState(() => _selectedAccountId = value),
               ),
               const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                value: _selectedType,
-                decoration: const InputDecoration(labelText: 'Type'),
-                items: const [
-                  DropdownMenuItem(value: 'Cash-In', child: Text('Cash In')),
-                  DropdownMenuItem(value: 'Cash-Out', child: Text('Cash Out')),
-                ],
-                onChanged: (value) => setState(() => _selectedType = value!),
+              // Type is auto-selected based on category - display as read-only
+              InputDecorator(
+                decoration: const InputDecoration(labelText: 'Type (Auto-selected)'),
+                child: Text(_selectedType, style: const TextStyle(fontSize: 16)),
               ),
               const SizedBox(height: 16),
               TextField(
@@ -152,14 +179,19 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 value: _selectedCategory,
-                decoration: const InputDecoration(labelText: 'Category'),
-                items: const [
-                  DropdownMenuItem(value: 'Food', child: Text('Food')),
-                  DropdownMenuItem(value: 'Transport', child: Text('Transport')),
-                  DropdownMenuItem(value: 'Salary', child: Text('Salary')),
-                  DropdownMenuItem(value: 'Other', child: Text('Other')),
-                ],
-                onChanged: (value) => setState(() => _selectedCategory = value!),
+                decoration: const InputDecoration(labelText: 'Category *'),
+                items: categories.map((cat) {
+                  return DropdownMenuItem<String>(
+                    value: cat.name,
+                    child: Text(cat.name),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    _updateTypeBasedOnCategory(value);
+                    setState(() => _selectedCategory = value);
+                  }
+                },
               ),
               const SizedBox(height: 16),
               ListTile(
