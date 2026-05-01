@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
+import ChatWidget from './ChatWidget'
 
 interface User {
   id: number
@@ -304,7 +305,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       ) : (
-        children
+        <>
+          {children}
+          {isAuthenticated && <ChatWidget />}
+        </>
       )}
     </AuthContext.Provider>
   )
