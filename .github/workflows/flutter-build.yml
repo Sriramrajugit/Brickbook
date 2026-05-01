@@ -40,13 +40,24 @@ jobs:
         working-directory: ./mobile_app
         run: flutter pub get
 
-      - name: Build APK
+      - name: Build Split APKs
         working-directory: ./mobile_app
-        run: flutter build apk --release
+        run: flutter build apk --release --split-per-abi
 
-      - name: Upload APK as Artifact
+      - name: Build App Bundle for Play Store
+        working-directory: ./mobile_app
+        run: flutter build appbundle --release
+
+      - name: Upload Split APKs for Testing
         uses: actions/upload-artifact@v4
         with:
-          name: ledger-android-app
-          path: mobile_app/build/app/outputs/flutter-apk/app-release.apk
+          name: ledger-android-apks
+          path: mobile_app/build/app/outputs/flutter-apk/app-*-release.apk
+          retention-days: 14
+
+      - name: Upload App Bundle for Play Store
+        uses: actions/upload-artifact@v4
+        with:
+          name: ledger-playstore-aab
+          path: mobile_app/build/app/outputs/bundle/release/app-release.aab
           retention-days: 14
