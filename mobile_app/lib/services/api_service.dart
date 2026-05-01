@@ -11,7 +11,7 @@ import '../models/user.dart';
 
 class ApiService {
   // Update this to your backend API URL
-  static const String baseUrl = 'http://localhost:3000/api';
+  static const String baseUrl = 'https://www.brickbook.in/api';
   static String? _token;
   
   // Set token (called after login)

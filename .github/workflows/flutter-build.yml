@@ -1,0 +1,50 @@
+name: Build Flutter Android App
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - testing-mobile-build
+    # Only trigger this workflow if changes are made to the mobile_app folder or this workflow file itself
+    paths:
+      - 'mobile_app/**'
+      - '.github/workflows/flutter-build.yml'
+  # This line allows you to manually click a "Run workflow" button in the GitHub Actions UI
+  workflow_dispatch: 
+
+jobs:
+  build-apk:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17' # Required for newer Android builds
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install Dependencies
+        working-directory: ./mobile_app
+        run: flutter pub get
+
+      - name: Build APK
+        working-directory: ./mobile_app
+        run: flutter build apk --release
+
+      - name: Upload APK as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ledger-android-app
+          path: mobile_app/build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 14
