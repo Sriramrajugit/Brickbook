@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
         // Calculate gross salary based on salary frequency
         let grossSalary = 0
         
-        if (emp.salaryFrequency === 'D') {
+        if (emp.salaryFrequency === 'D' || emp.salaryFrequency === 'Daily') {
           // Daily Employee: Salary based on attendance (no of days * daily rate + OT)
           const dailySalary = emp.salary || 0
           grossSalary = attendance.reduce((sum: number, record: any) => {
@@ -171,7 +171,7 @@ export async function POST(request: NextRequest) {
     }
 
     // For monthly employees, check if payroll already exists for this calendar month
-    if (employee.salaryFrequency === 'M') {
+    if (employee.salaryFrequency === 'M' || employee.salaryFrequency === 'Monthly') {
       // Get first and last day of the month for the period
       const year = fromDateObj.getFullYear()
       const month = fromDateObj.getMonth()

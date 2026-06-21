@@ -3,6 +3,19 @@ import bcrypt from 'bcryptjs'
 import { sign } from 'jsonwebtoken'
 import { prisma } from '@/lib/prisma'
 
+// Handle CORS preflight requests
+export async function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Access-Control-Allow-Credentials': 'true',
+    },
+  })
+}
+
 export async function POST(request: NextRequest) {
   try {
     console.log('📝 Login attempt started')
@@ -11,7 +24,9 @@ export async function POST(request: NextRequest) {
     const { userId, password } = await request.json()
 
     if (!userId || !password) {
-      return NextResponse.json({ error: 'User ID and password required' }, { status: 400 })
+      const errorResponse = NextResponse.json({ error: 'User ID and password required' }, { status: 400 })
+      errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+      return errorResponse
     }
 
     console.log('🔍 Checking credentials for userId:', userId)
@@ -33,17 +48,23 @@ export async function POST(request: NextRequest) {
     console.log('✅ User lookup complete, user found:', !!user)
     
     if (!user) {
-      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
+      const errorResponse = NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
+      errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+      return errorResponse
     }
 
     if (!user.password) {
-      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
+      const errorResponse = NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
+      errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+      return errorResponse
     }
 
     const isValidPassword = await bcrypt.compare(password, user.password)
 
     if (!isValidPassword) {
-      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
+      const errorResponse = NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
+      errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+      return errorResponse
     }
 
     // Update last login
@@ -62,6 +83,11 @@ export async function POST(request: NextRequest) {
       userId: user.id,
       token: token  // Return token in JSON for mobile clients
     })
+    
+    // Add CORS headers
+    response.headers.set('Access-Control-Allow-Origin', '*')
+    response.headers.set('Access-Control-Allow-Credentials', 'true')
+    
     response.cookies.set('auth-token', token, { 
       httpOnly: true, 
       maxAge: 24*60*60,
@@ -76,6 +102,8 @@ export async function POST(request: NextRequest) {
     console.error('❌ Login ERROR:', error)
     console.error('Error message:', error instanceof Error ? error.message : String(error))
     console.error('Error type:', error instanceof Error ? error.constructor.name : typeof error)
-    return NextResponse.json({ error: 'Server error: ' + (error instanceof Error ? error.message : String(error)) }, { status: 500 })
+    const errorResponse = NextResponse.json({ error: 'Server error: ' + (error instanceof Error ? error.message : String(error)) }, { status: 500 })
+    errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+    return errorResponse
   }
 }

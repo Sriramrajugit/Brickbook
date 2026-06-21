@@ -2,6 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 
+// Handle CORS preflight requests
+export async function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
+  })
+}
+
 export async function GET(_req: NextRequest) {
   try {
     console.log('📋 GET /api/accounts called');
@@ -22,16 +34,22 @@ export async function GET(_req: NextRequest) {
       const accounts = await prisma.account.findMany({
         where: { companyId },
         orderBy: { name: 'asc' },
-        // Return ONLY id and name - NO sensitive data
         select: {
           id: true,
           name: true,
+          type: true,
+          budget: true,
+          startDate: true,
+          endDate: true,
+          companyId: true,
+          createdAt: true,
+          updatedAt: true,
         }
       });
       
       console.log('📋 Found accounts:', accounts.length);
 
-      return NextResponse.json({
+      const response = NextResponse.json({
         data: accounts,
         pagination: {
           page: 1,
@@ -40,6 +58,8 @@ export async function GET(_req: NextRequest) {
           totalPages: 1
         }
       });
+      response.headers.set('Access-Control-Allow-Origin', '*');
+      return response;
     } catch (dbErr) {
       console.error('❌ Database error:', dbErr);
       throw dbErr;

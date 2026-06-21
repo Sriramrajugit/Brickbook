@@ -3,6 +3,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 
+// Handle CORS preflight requests
+export async function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
+  })
+}
+
 // GET /api/transactions
 export async function GET(req: NextRequest) {
   try {
@@ -74,7 +86,7 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       data: transactions,
       pagination: {
         page,
@@ -83,6 +95,8 @@ export async function GET(req: NextRequest) {
         totalPages: Math.ceil(total / limit),
       },
     });
+    response.headers.set('Access-Control-Allow-Origin', '*');
+    return response;
   } catch (err) {
     return NextResponse.json(
       { error: 'Failed to fetch transactions' },
