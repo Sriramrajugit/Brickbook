@@ -11,6 +11,10 @@ import '../models/user.dart';
 
 class ApiService {
   // Update this to your backend API URL
+  // For local development:
+ //static const String baseUrl = 'http://localhost:3000/api';
+ //static const String baseUrl = 'http://192.168.1.7:3000/api';
+  // For production:
   static const String baseUrl = 'https://www.brickbook.in/api';
   static String? _token;
   
@@ -44,24 +48,55 @@ class ApiService {
       headers: _getHeaders(),
     );
     if (response.statusCode == 200) {
-      final List<dynamic> data = json.decode(response.body);
-      return data.map((json) => Company.fromJson(json)).toList();
+      final decoded = json.decode(response.body);
+      if (decoded is Map<String, dynamic>) {
+        if (decoded.containsKey('error')) {
+          return [];
+        }
+        return [Company.fromJson(decoded)];
+      } else if (decoded is List) {
+        return decoded.map((json) => Company.fromJson(json as Map<String, dynamic>)).toList();
+      }
+      return [];
     }
     throw Exception('Failed to load companies');
   }
   
   // Accounts
   static Future<List<Account>> getAccounts() async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/accounts'),
-      headers: _getHeaders(),
-    );
-    print('📊 getAccounts response: ${response.statusCode} - ${response.body}');
-    if (response.statusCode == 200) {
-      final List<dynamic> data = json.decode(response.body);
-      return data.map((json) => Account.fromJson(json)).toList();
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/accounts'),
+        headers: _getHeaders(),
+      );
+      print('📊 getAccounts response: ${response.statusCode} - ${response.body}');
+      
+      if (response.statusCode == 200) {
+        try {
+          final Map<String, dynamic> result = json.decode(response.body);
+          final List<dynamic> data = result['data'] ?? [];
+          print('✅ Fetched ${data.length} accounts from API');
+          
+          final accounts = data.map((json) {
+            print('📦 Processing account JSON: $json');
+            return Account.fromJson(json as Map<String, dynamic>);
+          }).toList();
+          
+          print('✅ Successfully parsed ${accounts.length} accounts');
+          return accounts;
+        } catch (parseError) {
+          print('❌ Error parsing accounts response: $parseError');
+          print('❌ Response body: ${response.body}');
+          rethrow;
+        }
+      } else {
+        print('❌ Accounts API returned status: ${response.statusCode}');
+        throw Exception('Failed to load accounts: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ Exception in getAccounts: $e');
+      rethrow;
     }
-    throw Exception('Failed to load accounts');
   }
 
   static Future<Account> createAccount(String name) async {
@@ -200,22 +235,43 @@ class ApiService {
   }
 
   // Categories
-  static Future<List<dynamic>> getCategories() async {
+  static Future<List<Category>> getCategories() async {
     final response = await http.get(
       Uri.parse('$baseUrl/categories'),
       headers: _getHeaders(),
     );
+    print('📋 getCategories response status: ${response.statusCode}');
+    print('📋 getCategories response body: ${response.body}');
+    
     if (response.statusCode == 200) {
-      final responseBody = json.decode(response.body);
-      // Handle both array and object response formats
-      if (responseBody is List) {
-        return responseBody;
-      } else if (responseBody is Map && responseBody['data'] != null) {
-        return responseBody['data'];
+      try {
+        final responseBody = json.decode(response.body);
+        
+        // Handle array response (web API returns array directly)
+        if (responseBody is List) {
+          return responseBody
+              .map((json) => Category.fromJson(json as Map<String, dynamic>))
+              .toList();
+        } 
+        // Handle object response with data field
+        else if (responseBody is Map<String, dynamic>) {
+          if (responseBody['data'] != null) {
+            final List<dynamic> data = responseBody['data'];
+            return data
+                .map((json) => Category.fromJson(json as Map<String, dynamic>))
+                .toList();
+          }
+          // Single category returned as object
+          return [Category.fromJson(responseBody)];
+        }
+        
+        throw Exception('Unexpected response format');
+      } catch (e) {
+        print('❌ Error parsing categories: $e');
+        throw Exception('Failed to parse categories: $e');
       }
-      return responseBody as List;
     }
-    throw Exception('Failed to load categories');
+    throw Exception('Failed to load categories - Status: ${response.statusCode}');
   }
 
   static Future<void> createCategory(Category category) async {

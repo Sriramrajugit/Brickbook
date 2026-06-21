@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/employee.dart';
 import '../models/attendance.dart';
+import '../models/user.dart';
 import '../services/api_service.dart';
 import '../widgets/drawer_menu.dart';
 
@@ -19,11 +20,24 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   Map<int, bool> saving = {};
   String errorMessage = '';
   bool isMonthlyView = false; // Toggle between daily (false) and monthly (true) view
+  User? currentUser;
 
   @override
   void initState() {
     super.initState();
+    fetchCurrentUser();
     fetchEmployees();
+  }
+
+  Future<void> fetchCurrentUser() async {
+    try {
+      final user = await ApiService.getCurrentUser();
+      setState(() {
+        currentUser = user;
+      });
+    } catch (e) {
+      print('Failed to fetch current user: ${e.toString()}');
+    }
   }
 
   Future<void> fetchEmployees() async {
@@ -62,6 +76,17 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     String employeeName,
     double status,
   ) async {
+    // Check if user is a guest
+    if (currentUser?.role == 'GUEST') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Permission denied. Guest users cannot mark attendance.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     // Validate: No future dates allowed
     final today = DateTime.now();
     if (selectedDate.isAfter(today)) {
@@ -143,6 +168,30 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Permission warning for guest users
+                    if (currentUser?.role == 'GUEST')
+                      Card(
+                        color: Colors.red.shade50,
+                        child: Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: Row(
+                            children: [
+                              Icon(Icons.lock, color: Colors.red.shade700),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  'You do not have permission to mark attendance as a guest user.',
+                                  style: TextStyle(
+                                    color: Colors.red.shade700,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    const SizedBox(height: 16),
                     // Date Picker
                     Card(
                       child: Padding(
@@ -292,6 +341,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                     employee: employee,
                                     isSelected: currentStatus == 1.0,
                                     color: Colors.green,
+                                    enabled: currentUser?.role != 'GUEST',
                                   ),
                                   _buildStatusButton(
                                     label: 'OT 4H',
@@ -299,6 +349,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                     employee: employee,
                                     isSelected: currentStatus == 1.5,
                                     color: Colors.purple,
+                                    enabled: currentUser?.role != 'GUEST',
                                   ),
                                   _buildStatusButton(
                                     label: 'OT 8H',
@@ -306,6 +357,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                     employee: employee,
                                     isSelected: currentStatus == 2.0,
                                     color: Colors.deepPurple,
+                                    enabled: currentUser?.role != 'GUEST',
                                   ),
                                   _buildStatusButton(
                                     label: 'Absent',
@@ -313,6 +365,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                     employee: employee,
                                     isSelected: currentStatus == 0.0,
                                     color: Colors.red,
+                                    enabled: currentUser?.role != 'GUEST',
                                   ),
                                 ],
                               ),
@@ -392,13 +445,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     required Employee employee,
     required bool isSelected,
     required Color color,
+    required bool enabled,
   }) {
     return OutlinedButton(
-      onPressed: () => markAttendance(employee.id, employee.name, status),
+      onPressed: enabled ? () => markAttendance(employee.id, employee.name, status) : null,
       style: OutlinedButton.styleFrom(
-        foregroundColor: isSelected ? Colors.white : color,
+        foregroundColor: isSelected ? Colors.white : (enabled ? color : Colors.grey),
         backgroundColor: isSelected ? color : Colors.transparent,
-        side: BorderSide(color: color),
+        side: BorderSide(color: enabled ? color : Colors.grey),
       ),
       child: Text(label),
     );

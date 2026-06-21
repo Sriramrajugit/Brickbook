@@ -122,7 +122,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Dashboard'),
+        title: RichText(
+          text: TextSpan(
+            children: [
+              TextSpan(
+                text: 'Brick',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      color: Colors.red[600],
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+              TextSpan(
+                text: 'Book',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      color: Colors.black87,
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+            ],
+          ),
+        ),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
           if (company != null)
