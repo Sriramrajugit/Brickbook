@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'local_database.dart';
 import 'api_service.dart';
 import '../models/transaction.dart';
@@ -17,6 +18,7 @@ class SyncManager {
 
   // Start periodic sync check
   void startAutoSync() {
+    if (kIsWeb) return; // Disable background database sync on web
     // Check connectivity and sync every 30 seconds
     _syncTimer = Timer.periodic(Duration(seconds: 30), (timer) {
       syncIfOnline();
@@ -44,6 +46,7 @@ class SyncManager {
 
   // Main sync function
   Future<bool> syncWithServer() async {
+    if (kIsWeb) return false;
     if (_isSyncing) return false;
 
     _isSyncing = true;

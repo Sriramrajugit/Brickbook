@@ -28,16 +28,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     try {
       final data = await OfflineApiService.getCategories();
       setState(() {
-        // Convert dynamically based on type
-        if (data is List<Category>) {
-          categories = data;
-        } else if (data is List<dynamic>) {
-          categories = data
-              .map((item) => item is Category
-                  ? item
-                  : Category(name: item.toString()))
-              .toList();
-        }
+        categories = data;
         isLoading = false;
       });
     } catch (e) {
@@ -60,11 +51,16 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
 
     setState(() => isSaving = true);
     try {
+      final now = DateTime.now();
       final newCategory = Category(
+        id: 0,  // Server will assign ID
         name: _nameController.text,
         description: _descriptionController.text.isEmpty
             ? null
             : _descriptionController.text,
+        companyId: 1,  // Default company
+        createdAt: now,
+        updatedAt: now,
       );
 
       await OfflineApiService.createCategory(newCategory);
