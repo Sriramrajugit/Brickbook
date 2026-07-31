@@ -22,6 +22,7 @@ interface AttendanceRecord {
 }
 
 export default function Attendance() {
+  const { user } = useAuth()
   const [employees, setEmployees] = useState<Employee[]>([])
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([])
   const [selectedDate, setSelectedDate] = useState(
@@ -29,7 +30,7 @@ export default function Attendance() {
   )
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<Record<number, boolean>>({})
-
+  const isGuest = user?.role === 'GUEST'
   // Load employees
   useEffect(() => {
     const fetchEmployees = async () => {
@@ -104,6 +105,12 @@ export default function Attendance() {
     employeeName: string,
     status: number // 0=Absent, 1=Present, 1.5=OT4Hrs, 2=OT8Hrs
   ) => {
+    // Check if user is a guest
+    if (isGuest) {
+      alert('Permission denied. Guest users cannot mark attendance.')
+      return
+    }
+
     // Validate: No future dates allowed
     const today = new Date()
     today.setHours(0, 0, 0, 0)
@@ -190,6 +197,19 @@ export default function Attendance() {
         <main>
           <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
             <div className="px-4 py-6 sm:px-0">
+              {/* Permission warning for guest users */}
+              {isGuest && (
+                <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-3">
+                  <svg className="w-5 h-5 text-red-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M13.477 14.89A6 6 0 15.828 4.172a6 6 0 01-2.35 10.718zM12 5a1 1 0 100 2 1 1 0 000-2zM9 9a1 1 0 11-2 0 1 1 0 012 0z" clipRule="evenodd" />
+                  </svg>
+                  <div>
+                    <p className="text-red-800 font-medium">Permission Denied</p>
+                    <p className="text-red-700 text-sm">You do not have permission to mark attendance as a guest user.</p>
+                  </div>
+                </div>
+              )}
+
               {/* Mark Attendance */}
               <div className="bg-white p-6 rounded-lg shadow mb-6">
                 <h3 className="text-lg font-medium text-gray-900 mb-4">
@@ -222,11 +242,11 @@ export default function Attendance() {
                           <h4 className="font-medium text-gray-900 flex items-center gap-2">
                             {employee.name}
                             <span className={`inline-flex items-center justify-center text-xs font-semibold px-2 py-0.5 rounded-full ${
-                              employee.salaryFrequency === 'D'
+                              employee.salaryFrequency === 'D' || employee.salaryFrequency === 'Daily'
                                 ? 'bg-blue-100 text-blue-700'
                                 : 'bg-purple-100 text-purple-700'
                             }`}>
-                              {employee.salaryFrequency === 'D' ? '(D)' : '(M)'}
+                              {employee.salaryFrequency === 'D' || employee.salaryFrequency === 'Daily' ? '(D)' : '(M)'}
                             </span>
                           </h4>
                           <p className="text-sm text-gray-600">
@@ -239,7 +259,7 @@ export default function Attendance() {
 
                         {/* Radio-style options */}
                         <div className="flex items-center space-x-3">
-                          <label className="inline-flex items-center space-x-1 cursor-pointer">
+                          <label className={`inline-flex items-center space-x-1 ${isGuest ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
                             <input
                               type="radio"
                               name={`status-${employee.id}`}
@@ -248,6 +268,7 @@ export default function Attendance() {
                               onChange={() =>
                                 markAttendance(employee.id, employee.name, 1)
                               }
+                              disabled={isGuest}
                               className="h-4 w-4 text-green-600 border-gray-300"
                             />
                             <span className="text-xs text-gray-800">
@@ -255,7 +276,7 @@ export default function Attendance() {
                             </span>
                           </label>
 
-                          <label className="inline-flex items-center space-x-1 cursor-pointer">
+                          <label className={`inline-flex items-center space-x-1 ${isGuest ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
                             <input
                               type="radio"
                               name={`status-${employee.id}`}
@@ -268,12 +289,13 @@ export default function Attendance() {
                                   1.5
                                 )
                               }
+                              disabled={isGuest}
                               className="h-4 w-4 text-purple-500 border-gray-300"
                             />
                             <span className="text-xs text-gray-800">OT 4Hrs</span>
                           </label>
 
-                          <label className="inline-flex items-center space-x-1 cursor-pointer">
+                          <label className={`inline-flex items-center space-x-1 ${isGuest ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
                             <input
                               type="radio"
                               name={`status-${employee.id}`}
@@ -286,12 +308,13 @@ export default function Attendance() {
                                   2
                                 )
                               }
+                              disabled={isGuest}
                               className="h-4 w-4 text-purple-600 border-gray-300"
                             />
                             <span className="text-xs text-gray-800">OT 8Hrs</span>
                           </label>
 
-                          <label className="inline-flex items-center space-x-1 cursor-pointer">
+                          <label className={`inline-flex items-center space-x-1 ${isGuest ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
                             <input
                               type="radio"
                               name={`status-${employee.id}`}
@@ -304,6 +327,7 @@ export default function Attendance() {
                                   0
                                 )
                               }
+                              disabled={isGuest}
                               className="h-4 w-4 text-red-600 border-gray-300"
                             />
                             <span className="text-xs text-gray-800">

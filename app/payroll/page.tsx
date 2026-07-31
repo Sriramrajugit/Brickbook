@@ -77,8 +77,8 @@ export default function Payroll() {
   }, []);
 
   // Calculate totals from backend data
-  const monthlyEmployees = payrollPreview.filter(emp => emp.salaryFrequency === 'M');
-  const dailyEmployees = payrollPreview.filter(emp => emp.salaryFrequency === 'D');
+  const monthlyEmployees = payrollPreview.filter(emp => emp.salaryFrequency === 'M' || emp.salaryFrequency === 'Monthly');
+  const dailyEmployees = payrollPreview.filter(emp => emp.salaryFrequency === 'D' || emp.salaryFrequency === 'Daily');
 
   // Filter to only selected employees
   const selectedMonthlyEmployees = monthlyEmployees.filter(emp => selectedEmployees.has(emp.employeeId));

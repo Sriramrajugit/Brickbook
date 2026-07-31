@@ -34,7 +34,7 @@ class DrawerMenu extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 Text(
-                  'Ledger',
+                  'BrickBook',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -42,7 +42,7 @@ class DrawerMenu extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Financial Management',
+                  'Financial Management App',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: Colors.white70,
                       ),

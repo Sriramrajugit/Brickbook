@@ -59,18 +59,30 @@ export async function GET(request: NextRequest) {
       select: { employeeId: true, amount: true, fromDate: true, toDate: true },
     })
 
-    // Process data: aggregate per employee
+    // Process data: aggregate per employee with daily breakdown
     const reportData = employees.map((emp: any) => {
       const empAttendances = attendances.filter((a: any) => a.employeeId === emp.id)
 
-      // Calculate total days (status >= 1 means present, status between 0.5 means half day)
-      const totalDays = empAttendances.reduce((sum: number, a: any) => sum + a.status, 0)
+      // Calculate total days: cap each status at 1 day (anything > 1 is OT, not additional days)
+      // Example: status 1.5 = 1 day + 0.5 OT, status 2 = 1 day + 1 OT
+      const totalDays = empAttendances.reduce((sum: number, a: any) => sum + Math.min(a.status, 1), 0)
 
       // OT hours - if status > 1, the extra is OT (e.g., 1.5 = 1 day + 0.5 OT, 2 = 1 day + 1 OT)
-      const otHours = empAttendances.reduce((sum: number, a: any) => (a.status > 1 ? a.status - 1 : 0), 0)
+      const otHours = empAttendances.reduce((sum: number, a: any) => sum + (a.status > 1 ? a.status - 1 : 0), 0)
+
+      // Create daily attendance map (day number -> status)
+      const dailyAttendance: { [day: number]: number } = {}
+      empAttendances.forEach((att: any) => {
+        const day = new Date(att.date).getDate()
+        dailyAttendance[day] = att.status
+      })
 
       if (empAttendances.length > 0) {
-        console.log(`[DEBUG] Employee ${emp.id} (${emp.name}): ${empAttendances.length} records, Days=${totalDays}, OT=${otHours}, Records:`, empAttendances.map((a:any) => ({date: a.date, status: a.status})))
+        // Log individual records to debug OT calculation
+        const statusBreakdown = empAttendances.map((a:any) => ({date: a.date, status: a.status, isOT: a.status > 1}))
+        console.log(`[DEBUG] Employee ${emp.id} (${emp.name}): ${empAttendances.length} records, Days=${totalDays}, OT=${otHours}`)
+        console.log(`[DEBUG] Status breakdown:`, statusBreakdown)
+        console.log(`[DEBUG] Daily Attendance Map:`, dailyAttendance)
       }
 
       return {
@@ -80,6 +92,7 @@ export async function GET(request: NextRequest) {
         salaryFrequency: emp.salaryFrequency && emp.salaryFrequency.toLowerCase().startsWith('d') ? 'Daily' : 'Monthly',
         totalDays: Math.round(totalDays * 100) / 100,
         otHours: Math.round(otHours * 100) / 100,
+        dailyAttendance: dailyAttendance // Day-by-day breakdown
       }
     })
 

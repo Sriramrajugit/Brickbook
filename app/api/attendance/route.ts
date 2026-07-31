@@ -48,6 +48,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Check if user has permission to mark attendance (only OWNER and SITE_MANAGER)
+    if (user.role === 'GUEST') {
+      return NextResponse.json(
+        { error: 'Permission denied. Guest users cannot mark attendance.' },
+        { status: 403 }
+      );
+    }
+
     const companyId = user.companyId as number;
     const { employeeId, date, status } = await request.json();
 

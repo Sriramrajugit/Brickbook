@@ -34,6 +34,8 @@ export default function Employees() {
   const [error, setError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null)
+  const [sortBy, setSortBy] = useState<'name' | 'partnerType'>('name')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
   const [formData, setFormData] = useState({
     name: '',
     partnerType: 'Employee',
@@ -47,6 +49,29 @@ export default function Employees() {
     fetchEmployees()
   }, [])
 
+  const sortEmployees = (data: Employee[], sortByField: 'name' | 'partnerType', order: 'asc' | 'desc') => {
+    return data.sort((a, b) => {
+      let compareA: string
+      let compareB: string
+
+      if (sortByField === 'name') {
+        compareA = a.name.toLowerCase()
+        compareB = b.name.toLowerCase()
+      } else {
+        compareA = a.partnerType.toLowerCase()
+        compareB = b.partnerType.toLowerCase()
+        // If partnerType is same, sort by name
+        if (compareA === compareB) {
+          compareA = a.name.toLowerCase()
+          compareB = b.name.toLowerCase()
+        }
+      }
+
+      const comparison = compareA.localeCompare(compareB)
+      return order === 'asc' ? comparison : -comparison
+    })
+  }
+
   const fetchEmployees = async () => {
     try {
       const response = await fetch('/api/employees', {
@@ -54,15 +79,7 @@ export default function Employees() {
       })
       if (response.ok) {
         const data = await response.json()
-        // Sort by name, then by frequency (M before D)
-        const sorted = data.sort((a: Employee, b: Employee) => {
-          const nameCompare = a.name.localeCompare(b.name)
-          if (nameCompare !== 0) return nameCompare
-          // M (Monthly) comes before D (Daily)
-          if (a.salaryFrequency === 'M' && b.salaryFrequency === 'D') return -1
-          if (a.salaryFrequency === 'D' && b.salaryFrequency === 'M') return 1
-          return 0
-        })
+        const sorted = sortEmployees(data, sortBy, sortOrder)
         setEmployees(sorted)
       } else {
         setError('Failed to fetch partners')
@@ -73,6 +90,22 @@ export default function Employees() {
       setLoading(false)
     }
   }
+
+  const handleSort = (field: 'name' | 'partnerType') => {
+    if (sortBy === field) {
+      // Toggle sort order if clicking same field
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+    } else {
+      // Set new sort field and reset to ascending
+      setSortBy(field)
+      setSortOrder('asc')
+    }
+  }
+
+  useEffect(() => {
+    // Re-sort employees when sort settings change
+    setEmployees(prev => sortEmployees(prev, sortBy, sortOrder))
+  }, [sortBy, sortOrder])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -142,8 +175,8 @@ export default function Employees() {
 
   const startEdit = (employee: Employee) => {
     setEditingEmployee(employee)
-    // Convert M/D to Monthly/Daily for display
-    const displayFreq = employee.salaryFrequency === 'D' ? 'Daily' : 'Monthly'
+    // Convert D/Daily to Daily, M/Monthly to Monthly for display
+    const displayFreq = (employee.salaryFrequency === 'D' || employee.salaryFrequency === 'Daily') ? 'Daily' : 'Monthly'
     setFormData({
       name: employee.name,
       partnerType: employee.partnerType || 'Employee',
@@ -323,8 +356,32 @@ export default function Employees() {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Partner Type</th>
+                      <th 
+                        onClick={() => handleSort('name')}
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition"
+                      >
+                        <div className="flex items-center gap-2">
+                          Name
+                          {sortBy === 'name' && (
+                            <span className="text-blue-600">
+                              {sortOrder === 'asc' ? '▲' : '▼'}
+                            </span>
+                          )}
+                        </div>
+                      </th>
+                      <th 
+                        onClick={() => handleSort('partnerType')}
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition"
+                      >
+                        <div className="flex items-center gap-2">
+                          Partner Type
+                          {sortBy === 'partnerType' && (
+                            <span className="text-blue-600">
+                              {sortOrder === 'asc' ? '▲' : '▼'}
+                            </span>
+                          )}
+                        </div>
+                      </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Designation/Type</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Salary Frequency</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Salary</th>
@@ -354,7 +411,7 @@ export default function Employees() {
                           {employee.etype || '-'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {employee.partnerType === 'Employee' ? (employee.salaryFrequency === 'M' ? 'Monthly' : 'Daily') : 'N/A'}
+                          {employee.partnerType === 'Employee' ? (employee.salaryFrequency === 'M' || employee.salaryFrequency === 'Monthly' ? 'Monthly' : 'Daily') : 'N/A'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{employee.partnerType === 'Employee' ? (employee.salary ? `Rs ${employee.salary.toFixed(2)}` : 'N/A') : 'N/A'}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{employee.status}</td>

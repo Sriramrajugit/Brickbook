@@ -3,6 +3,13 @@ import { NextResponse, NextRequest } from 'next/server'
 export function middleware(request: NextRequest) {
   const response = NextResponse.next()
 
+  // CORS headers for mobile/web app access
+  const origin = request.headers.get('origin') || '*'
+  response.headers.set('Access-Control-Allow-Origin', origin)
+  response.headers.set('Access-Control-Allow-Credentials', 'true')
+  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS')
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+
   // Security headers to protect against common vulnerabilities
   response.headers.set('X-Content-Type-Options', 'nosniff') // Prevent MIME type sniffing
   response.headers.set('X-Frame-Options', 'DENY') // Prevent clickjacking
@@ -14,7 +21,7 @@ export function middleware(request: NextRequest) {
   // Content Security Policy - restrict resources to same origin
   response.headers.set(
     'Content-Security-Policy',
-    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self'"
+    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' http://localhost:3000"
   )
 
   return response
@@ -33,3 +40,4 @@ export const config = {
     '/((?!_next/static|_next/image|favicon.ico|public).*)',
   ],
 }
+

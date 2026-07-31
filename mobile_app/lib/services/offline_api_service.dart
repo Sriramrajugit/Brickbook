@@ -1,4 +1,5 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'api_service.dart';
 import 'local_database.dart';
 import '../models/transaction.dart';
@@ -11,12 +12,16 @@ class OfflineApiService {
 
   // Check if device is online
   static Future<bool> isOnline() async {
+    if (kIsWeb) return true; // Web client is assumed to be online
     final connectivityResult = await Connectivity().checkConnectivity();
     return connectivityResult != ConnectivityResult.none;
   }
 
   // TRANSACTIONS - Works offline
   static Future<List<Transaction>> getTransactions() async {
+    if (kIsWeb) {
+      return await ApiService.getTransactions();
+    }
     if (await isOnline()) {
       try {
         // Try to fetch from server
@@ -35,6 +40,9 @@ class OfflineApiService {
   }
 
   static Future<Transaction> createTransaction(Transaction transaction) async {
+    if (kIsWeb) {
+      return await ApiService.createTransaction(transaction);
+    }
     // Always save locally first
     final localId = await _localDb.insertTransaction(transaction);
     final updatedTx = Transaction(
@@ -70,6 +78,9 @@ class OfflineApiService {
 
   // EMPLOYEES - Works offline
   static Future<List<Employee>> getEmployees() async {
+    if (kIsWeb) {
+      return await ApiService.getEmployees();
+    }
     if (await isOnline()) {
       try {
         final employees = await ApiService.getEmployees();
@@ -85,6 +96,9 @@ class OfflineApiService {
   }
 
   static Future<Employee> createEmployee(String name, double? salary) async {
+    if (kIsWeb) {
+      return await ApiService.createEmployee(name, salary);
+    }
     // Save locally first
     final employee = Employee(
       id: 0,
@@ -129,66 +143,91 @@ class OfflineApiService {
 
   // ACCOUNTS - Works offline
   static Future<List<Account>> getAccounts() async {
+    if (kIsWeb) {
+      try {
+        print('🌐 Fetching accounts from web API...');
+        final accounts = await ApiService.getAccounts();
+        print('✅ Fetched ${accounts.length} accounts from web API');
+        return accounts;
+      } catch (e) {
+        print('❌ Failed to fetch accounts from web: $e');
+        rethrow;
+      }
+    }
     if (await isOnline()) {
       try {
+        print('🌐 Device is online, fetching accounts from API...');
         final accounts = await ApiService.getAccounts();
+        print('✅ Fetched ${accounts.length} accounts, saving to local DB');
         await _localDb.saveServerData([], [], accounts);
         return accounts;
       } catch (e) {
-        print('API call failed, using local data: $e');
+        print('❌ API call failed, using local data: $e');
         return await _localDb.getLocalAccounts();
       }
     } else {
+      print('⚠️ Device is offline, using local accounts');
       return await _localDb.getLocalAccounts();
     }
   }
 
   // CATEGORIES - Works offline
-  static Future<List<dynamic>> getCategories() async {
-    if (await isOnline()) {
+  static Future<List<Category>> getCategories() async {
+    if (kIsWeb) {
       try {
-        // Try to fetch from server
         final categories = await ApiService.getCategories();
-        // Store in shared preferences for offline access
-        // Implementation depends on your API response format
+        print('✅ Fetched ${categories.length} categories from server');
         return categories;
       } catch (e) {
-        print('Failed to fetch categories, using defaults: $e');
-        // Return default categories
+        print('❌ Failed to fetch categories: $e');
+        return _getDefaultCategories();
+      }
+    }
+    if (await isOnline()) {
+      try {
+        final categories = await ApiService.getCategories();
+        print('✅ Fetched ${categories.length} categories from server');
+        return categories;
+      } catch (e) {
+        print('❌ Failed to fetch categories, using defaults: $e');
         return _getDefaultCategories();
       }
     } else {
-      // Offline - use default categories
+      print('⚠️ Offline: Using default categories');
       return _getDefaultCategories();
     }
   }
 
   static Future<void> createCategory(Category category) async {
+    if (kIsWeb) {
+      await ApiService.createCategory(category);
+      return;
+    }
     if (await isOnline()) {
       try {
         await ApiService.createCategory(category);
-        print('Category created on server: ${category.name}');
+        print('✅ Category created on server: ${category.name}');
       } catch (e) {
-        print('Failed to create category on server: $e');
-        // Still consider this a success for offline-first apps
+        print('❌ Failed to create category on server: $e');
       }
     } else {
-      print('Offline: Category saved locally: ${category.name}');
+      print('⚠️ Offline: Category saved locally: ${category.name}');
     }
   }
 
   // Default categories for offline use
   static List<Category> _getDefaultCategories() {
     return [
-      Category(name: 'Salary', description: 'Employee salaries'),
-      Category(name: 'Office Supplies', description: 'Office related items'),
-      Category(name: 'Utilities', description: 'Electricity, water, etc'),
-      Category(name: 'Transportation', description: 'Travel and transport'),
-      Category(name: 'Food & Meals', description: 'Food and meal expenses'),
-      Category(name: 'Entertainment', description: 'Entertainment expenses'),
-      Category(name: 'Medical', description: 'Medical expenses'),
-      Category(name: 'Other Income', description: 'Miscellaneous income'),
-      Category(name: 'Other Expenses', description: 'Other expenses'),
+      Category(id: 1, name: 'Salary', description: 'Employee salaries', companyId: 1, createdAt: DateTime.now(), updatedAt: DateTime.now()),
+      Category(id: 2, name: 'Office Supplies', description: 'Office related items', companyId: 1, createdAt: DateTime.now(), updatedAt: DateTime.now()),
+      Category(id: 3, name: 'Utilities', description: 'Electricity, water, etc', companyId: 1, createdAt: DateTime.now(), updatedAt: DateTime.now()),
+      Category(id: 4, name: 'Transportation', description: 'Travel and transport', companyId: 1, createdAt: DateTime.now(), updatedAt: DateTime.now()),
+      Category(id: 5, name: 'Food & Meals', description: 'Food and meal expenses', companyId: 1, createdAt: DateTime.now(), updatedAt: DateTime.now()),
+      Category(id: 6, name: 'Entertainment', description: 'Entertainment expenses', companyId: 1, createdAt: DateTime.now(), updatedAt: DateTime.now()),
+      Category(id: 7, name: 'Medical', description: 'Medical expenses', companyId: 1, createdAt: DateTime.now(), updatedAt: DateTime.now()),
+      Category(id: 8, name: 'Other Income', description: 'Miscellaneous income', companyId: 1, createdAt: DateTime.now(), updatedAt: DateTime.now()),
+      Category(id: 9, name: 'Other Expenses', description: 'Other expenses', companyId: 1, createdAt: DateTime.now(), updatedAt: DateTime.now()),
     ];
   }
 }
+

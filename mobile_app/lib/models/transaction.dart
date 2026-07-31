@@ -36,23 +36,29 @@ class Transaction {
   });
 
   factory Transaction.fromJson(Map<String, dynamic> json) {
-    return Transaction(
-      id: json['id'] as int? ?? 0,
-      amount: (json['amount'] as num).toDouble(),
-      description: json['description'] as String?,
-      category: json['category'] as String? ?? '',
-      type: json['type'] as String? ?? '',
-      paymentMode: json['paymentMode'] as String? ?? 'G-Pay',
-      date: json['date'] != null ? DateTime.parse(json['date'].toString()) : DateTime.now(),
-      accountId: json['accountId'] as int? ?? 0,
-      categoryId: json['categoryId'] as int?,
-      createdBy: json['createdBy'] as int?,
-      companyId: json['companyId'] as int? ?? 1,
-      siteId: json['siteId'] as int?,
-      account: json['account'] != null ? Account.fromJson(json['account']) : null,
-      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt'].toString()) : DateTime.now(),
-      updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt'].toString()) : DateTime.now(),
-    );
+    try {
+      return Transaction(
+        id: json['id'] as int? ?? 0,
+        amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
+        description: json['description'] as String?,
+        category: json['category'] as String? ?? '',
+        type: json['type'] as String? ?? 'Cash-Out',
+        paymentMode: json['paymentMode'] as String? ?? 'G-Pay',
+        date: json['date'] != null ? DateTime.parse(json['date'].toString()) : DateTime.now(),
+        accountId: json['accountId'] as int? ?? 0,
+        categoryId: json['categoryId'] as int?,
+        createdBy: json['createdBy'] as int?,
+        companyId: json['companyId'] as int? ?? 1,
+        siteId: json['siteId'] as int?,
+        account: json['account'] != null ? Account.fromJson(json['account'] as Map<String, dynamic>) : null,
+        createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt'].toString()) : DateTime.now(),
+        updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt'].toString()) : DateTime.now(),
+      );
+    } catch (e) {
+      print('❌ Error parsing Transaction: $e');
+      print('❌ JSON: $json');
+      rethrow;
+    }
   }
 
   Map<String, dynamic> toJson() {

@@ -31,6 +31,7 @@ interface ReportRow {
   salaryFrequency: string
   totalDays: number
   otHours: number
+  dailyAttendance?: { [day: number]: number }
 }
 
 interface ReportSummary {
@@ -138,6 +139,45 @@ export default function Reports() {
     }
   }
 
+  // Helper functions for calendar view
+  const getDaysInRange = (startDate: string, endDate: string) => {
+    const start = new Date(startDate)
+    const end = new Date(endDate)
+    const days = []
+    for (let i = start.getDate(); i <= end.getDate(); i++) {
+      days.push(i)
+    }
+    return days
+  }
+
+  const getAttendanceStatus = (status: number | undefined) => {
+    if (status === undefined) return '-'
+    if (status > 1) return '⚡'
+    if (status >= 0.5) return '✓'
+    return '✗'
+  }
+
+  const getAttendanceColor = (status: number | undefined) => {
+    if (status === undefined) return 'bg-gray-50'
+    if (status > 1) return 'bg-blue-100'
+    if (status >= 0.5) return 'bg-green-100'
+    return 'bg-red-100'
+  }
+
+  const getOTDays = () => {
+    const otDays = new Set<number>()
+    reportData.forEach((row) => {
+      monthDays.forEach((day) => {
+        if (row.dailyAttendance?.[day] && row.dailyAttendance[day] > 1) {
+          otDays.add(day)
+        }
+      })
+    })
+    return Array.from(otDays).sort((a, b) => a - b)
+  }
+
+  const monthDays = getDaysInRange(attStartDate, attEndDate)
+
   // Transaction Report Calculations
   const filteredTransactions = transactions.filter(transaction => {
     const transactionDate = new Date(transaction.date)
@@ -170,17 +210,64 @@ export default function Reports() {
       return
     }
 
-    const excelData = filteredTransactions.map(t => ({
-      'Date': new Date(t.date).toLocaleDateString('en-IN'),
-      'Account': t.account?.name || '-',
-      'Description': t.description || '-',
-      'Category': t.category,
-      'Type': t.type,
-      'Amount': t.amount
-    }))
+    // Calculate running balance for each transaction
+    let runningBalance = 0
+    const excelData = filteredTransactions.map(t => {
+      // Credit for Cash-In, Debit for Cash-Out
+      const credit = t.type === 'Cash-In' ? t.amount : 0
+      const debit = t.type === 'Cash-Out' ? t.amount : 0
+      
+      // Update running balance
+      runningBalance += credit - debit
+      
+      return {
+        'Date': new Date(t.date).toLocaleDateString('en-IN'),
+        'Account': t.account?.name || '-',
+        'Description': t.description || '-',
+        'Category': t.category,
+        'Debit': debit > 0 ? debit : '',
+        'Credit': credit > 0 ? credit : '',
+        'Balance': runningBalance
+      }
+    })
 
-    const ws = XLSX.utils.json_to_sheet(excelData)
+    // Create workbook
     const wb = XLSX.utils.book_new()
+    
+    // Create data with headers
+    const wsData = [
+      [user?.name || 'Transaction Report'],
+      ['Report Generated: ' + new Date().toLocaleDateString('en-IN') + ' ' + new Date().toLocaleTimeString('en-IN')],
+      ['Period: ' + new Date(transStartDate).toLocaleDateString('en-IN') + ' to ' + new Date(transEndDate).toLocaleDateString('en-IN')],
+      ['Total Transactions: ' + filteredTransactions.length],
+      [], // Empty row for spacing
+      // Column headers
+      ['Date', 'Account', 'Description', 'Category', 'Debit', 'Credit', 'Balance'],
+      // Data rows
+      ...excelData.map(row => [
+        row['Date'],
+        row['Account'],
+        row['Description'],
+        row['Category'],
+        row['Debit'],
+        row['Credit'],
+        row['Balance']
+      ])
+    ]
+
+    const ws = XLSX.utils.aoa_to_sheet(wsData)
+    
+    // Set column widths
+    ws['!cols'] = [
+      { wch: 12 }, // Date
+      { wch: 15 }, // Account
+      { wch: 25 }, // Description
+      { wch: 15 }, // Category
+      { wch: 12 }, // Debit
+      { wch: 12 }, // Credit
+      { wch: 15 }  // Balance
+    ]
+
     XLSX.utils.book_append_sheet(wb, ws, 'Transaction Report')
     XLSX.writeFile(wb, `transaction_report_${transStartDate}_to_${transEndDate}.xlsx`)
   }
@@ -192,20 +279,37 @@ export default function Reports() {
       return
     }
 
-    let csv = 'Employee Attendance Report\n'
-    csv += `Period: ${summary?.startDate} to ${summary?.endDate}\n\n`
-    csv += 'Employee Name,Employee Type,Salary Type,Days Worked,OT Hours\n'
+    let csv = 'ATTENDANCE REPORT - CALENDAR FORMAT\n'
+    csv += `Period: ${summary?.startDate} to ${summary?.endDate}\n`
+    csv += `Total Employees: ${summary?.totalEmployees}\n\n`
 
+    // Header row with days
+    csv += 'Employee Name,Employee Type,Salary Type,' + monthDays.map(day => day).join(',') + ',Days Worked,OT Hours\n'
+
+    // Data rows
     reportData.forEach((row) => {
-      csv += `"${row.employeeName}","${row.employeeType}","${row.salaryFrequency}",${row.totalDays},${row.otHours.toFixed(2)}\n`
+      const dayStatuses = monthDays.map(day => {
+        const status = row.dailyAttendance?.[day]
+        if (status === undefined) return '-'
+        if (status >= 1) return '✓'
+        if (status > 0 && status < 1) return '◐'
+        return '✗'
+      }).join(',')
+
+      csv += `"${row.employeeName}","${row.employeeType}","${row.salaryFrequency}",${dayStatuses},${row.totalDays},${row.otHours.toFixed(1)}\n`
     })
 
-    csv += `\nTotal Employees,${summary?.totalEmployees || 0}\n`
+    // Footer with totals
+    csv += '\n,,,TOTALS,'
+    csv += monthDays.map(() => '').join(',')
+    csv += `${reportData.reduce((sum, row) => sum + row.totalDays, 0).toFixed(1)},${reportData.reduce((sum, row) => sum + row.otHours, 0).toFixed(1)}\n`
+
+    csv += '\nLegend: ✓ = Present, ⚡ = OT Worked, ✗ = Absent, - = No Record\n'
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
     const link = document.createElement('a')
     const url = URL.createObjectURL(blob)
-    const filename = `attendance_report_${summary?.startDate}_to_${summary?.endDate}.csv`
+    const filename = `attendance_report_calendar_${summary?.startDate}_to_${summary?.endDate}.csv`
 
     link.setAttribute('href', url)
     link.setAttribute('download', filename)
@@ -368,47 +472,97 @@ export default function Reports() {
                 )}
 
                 {reportData.length > 0 && (
-                  <div className="overflow-x-auto mt-6 border rounded-lg">
-                    <table className="w-full min-w-max">
-                      <thead className="bg-gray-100 border-b sticky top-0">
-                        <tr>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700 whitespace-nowrap">Employee Name</th>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700 whitespace-nowrap">Employee Type</th>
-                          <th className="px-4 py-3 text-center font-semibold text-gray-700 whitespace-nowrap">Salary Type</th>
-                          <th className="px-4 py-3 text-right font-semibold text-gray-700 whitespace-nowrap">Days Worked</th>
-                          <th className="px-4 py-3 text-right font-semibold text-gray-700 whitespace-nowrap">OT Hours</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y">
-                        {reportData.map((row, idx) => {
-                          const prevRow = idx > 0 ? reportData[idx - 1] : null
-                          const isGroupChange = !prevRow || row.salaryFrequency !== prevRow.salaryFrequency
-                          
-                          return (
-                            <Fragment key={`row-${idx}`}>
-                              {isGroupChange && (
-                                <tr className="bg-blue-50 border-t-2 border-gray-300">
-                                  <td colSpan={5} className="px-4 py-2 font-bold text-blue-700">
-                                    {row.salaryFrequency === 'Monthly' ? '📅 Monthly Wage Employees' : '📆 Daily Wage Employees'}
-                                  </td>
-                                </tr>
-                              )}
-                              <tr className="hover:bg-gray-50">
-                                <td className="px-4 py-3 whitespace-nowrap">{row.employeeName}</td>
-                                <td className="px-4 py-3 whitespace-nowrap">{row.employeeType}</td>
-                                <td className="px-4 py-3 text-center">
-                                  <span className={`px-3 py-1 rounded-full text-sm font-semibold whitespace-nowrap inline-block ${row.salaryFrequency === 'Monthly' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'}`}>
-                                    {row.salaryFrequency}
-                                  </span>
+                  <div className="mt-6 border rounded-lg bg-white overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="border-collapse text-xs">
+                        <thead>
+                          <tr className="bg-gray-100 border-b-2 border-gray-300">
+                            <th className="border border-gray-300 px-2 py-1 text-left font-bold sticky left-0 bg-gray-100 z-10" style={{ minWidth: '100px' }}>
+                              Employee
+                            </th>
+                            <th className="border border-gray-300 px-1 py-1 text-left font-bold" style={{ minWidth: '60px' }}>
+                              Type
+                            </th>
+                            <th className="border border-gray-300 px-1 py-1 text-left font-bold" style={{ minWidth: '55px' }}>
+                              Salary
+                            </th>
+                            {/* Day headers */}
+                            {monthDays.map((day) => (
+                              <th
+                                key={`header-${day}`}
+                                className="border border-gray-300 px-0.5 py-1 text-center font-semibold text-xs bg-blue-50"
+                                style={{ minWidth: '24px', width: '24px' }}
+                              >
+                                {day}
+                              </th>
+                            ))}
+                            <th className="border border-gray-300 px-1 py-1 text-center font-bold sticky right-[45px] bg-gray-100 z-10" style={{ minWidth: '50px' }}>
+                              Days
+                            </th>
+                            <th className="border border-gray-300 px-1 py-1 text-center font-bold sticky right-0 bg-gray-100 z-10" style={{ minWidth: '45px' }}>
+                              OT
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {reportData.map((row, idx) => (
+                            <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                              <td className="border border-gray-300 px-2 py-1 font-semibold text-xs sticky left-0 z-10" style={{ backgroundColor: idx % 2 === 0 ? 'white' : '#f9fafb' }}>
+                                {row.employeeName.substring(0, 12)}
+                              </td>
+                              <td className="border border-gray-300 px-1 py-1 text-xs truncate">
+                                {row.employeeType.substring(0, 8)}
+                              </td>
+                              <td className="border border-gray-300 px-1 py-1 text-xs text-center font-bold text-blue-600">
+                                {row.salaryFrequency === 'Monthly' ? 'M' : 'D'}
+                              </td>
+                              {/* Day cells */}
+                              {monthDays.map((day) => (
+                                <td
+                                  key={`${row.employeeId}-${day}`}
+                                  className={`border border-gray-300 px-0.5 py-0.5 text-center font-bold text-sm ${getAttendanceColor(row.dailyAttendance?.[day])}`}
+                                  style={{ minWidth: '24px', width: '24px' }}
+                                >
+                                  {getAttendanceStatus(row.dailyAttendance?.[day])}
                                 </td>
-                                <td className="px-4 py-3 text-right font-semibold whitespace-nowrap">{row.totalDays}</td>
-                                <td className="px-4 py-3 text-right whitespace-nowrap">{row.otHours.toFixed(2)}</td>
-                              </tr>
-                            </Fragment>
-                          )
-                        })}
-                      </tbody>
-                    </table>
+                              ))}
+                              <td className="border border-gray-300 px-1 py-1 text-center font-bold text-xs sticky right-[45px] z-10" style={{ backgroundColor: idx % 2 === 0 ? 'white' : '#f9fafb' }}>
+                                {row.totalDays}
+                              </td>
+                              <td className="border border-gray-300 px-1 py-1 text-center font-bold text-xs sticky right-0 z-10" style={{ backgroundColor: idx % 2 === 0 ? 'white' : '#f9fafb' }}>
+                                {row.otHours.toFixed(1)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot className="bg-blue-50 border-t-2 border-gray-300">
+                          <tr>
+                            <td colSpan={3} className="border border-gray-300 px-2 py-1 font-bold text-right text-xs">
+                              TOTAL:
+                            </td>
+                            {monthDays.map((day) => (
+                              <td key={`total-${day}`} className="border border-gray-300 px-0.5 py-1 text-center bg-blue-50" style={{ minWidth: '24px' }} />
+                            ))}
+                            <td className="border border-gray-300 px-1 py-1 text-center font-bold sticky right-[45px] z-10 bg-blue-50 text-xs">
+                              {reportData.reduce((sum, row) => sum + row.totalDays, 0).toFixed(1)}
+                            </td>
+                            <td className="border border-gray-300 px-1 py-1 text-center font-bold sticky right-0 z-10 bg-blue-50 text-xs">
+                              {reportData.reduce((sum, row) => sum + row.otHours, 0).toFixed(1)}
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                    <div className="p-2 bg-gray-50 border-t border-gray-200 text-xs space-y-1">
+                      <p className="text-gray-700">
+                        <strong>Legend:</strong> ✓ = Present, ⚡ = OT Worked, ✗ = Absent, - = No Record | M = Monthly, D = Daily
+                      </p>
+                      {getOTDays().length > 0 && (
+                        <p className="text-gray-700">
+                          <strong>Days with OT:</strong> {getOTDays().join(', ')}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 )}
 
