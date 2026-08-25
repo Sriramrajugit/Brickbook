@@ -10,24 +10,27 @@ datasource db {
 }
 
 model Company {
-  id               Int               @id @default(autoincrement())
-  name             String            @unique
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  accounts         Account[]
-  advances         Advance[]
-  attendances      Attendance[]
-  categories       Category[]
-  employees        Employee[]
-  items            Item[]
-  payrolls         Payroll[]
-  sites            Site[]
-  suppliers        Supplier[]
-  transactions     Transaction[]
-  users            User[]
-  purchaseOrders   PurchaseOrder[]
-  purchaseOrderAudits PurchaseOrderAudit[]
-  grns             GoodsReceivedNote[]
+  id                    Int                      @id @default(autoincrement())
+  name                  String                   @unique
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
+  accounts              Account[]
+  advances              Advance[]
+  attendances           Attendance[]
+  categories            Category[]
+  employees             Employee[]
+  items                 Item[]
+  payrolls              Payroll[]
+  sites                 Site[]
+  suppliers             Supplier[]
+  partners              Partner[]
+  transactions          Transaction[]
+  users                 User[]
+  purchaseOrders        PurchaseOrder[]
+  purchaseOrderAudits   PurchaseOrderAudit[]
+  grns                  GoodsReceivedNote[]
+  partnerBills          PartnerBill[]
+  partnerBillPayments   PartnerBillPayment[]
 
   @@map("companies")
 }
@@ -89,6 +92,7 @@ model Account {
   company      Company       @relation(fields: [companyId], references: [id])
   site         Site?         @relation(fields: [siteId], references: [id])
   transactions Transaction[]
+  partnerBills PartnerBill[]
 
   @@index([companyId])
   @@map("accounts")
@@ -129,6 +133,7 @@ model Transaction {
   company       Company   @relation(fields: [companyId], references: [id])
   createdByUser User?     @relation(fields: [createdBy], references: [id])
   site          Site?     @relation(fields: [siteId], references: [id])
+  advances      Advance[]
 
   @@index([companyId])
   @@index([siteId])
@@ -136,20 +141,28 @@ model Transaction {
 }
 
 model Employee {
-  id              Int          @id @default(autoincrement())
-  name            String
-  partnerType     String       @default("Employee")  // Employee, Supplier, Contractor
-  etype           String?      // Designation
-  salary          Float?
-  salaryFrequency String       @default("Monthly")  // Daily or Monthly
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-  status          String       @default("Active")
-  companyId       Int
-  advances        Advance[]
-  attendances     Attendance[]
-  company         Company      @relation(fields: [companyId], references: [id])
-  payrolls        Payroll[]
+  id                Int              @id @default(autoincrement())
+  name              String
+  partnerType       String           @default("Employee")  // Employee, Supplier, Contractor
+  etype             String?          // Designation
+  email             String?
+  phone             String?
+  address           String?
+  salary            Float?
+  salaryFrequency   String           @default("Monthly")  // Daily or Monthly
+  // Partner/Supplier fields
+  gstNumber         String?
+  creditPeriodDays  Int              @default(30)
+  isActive          Boolean          @default(true)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  status            String           @default("Active")
+  companyId         Int
+  advances          Advance[]
+  attendances       Attendance[]
+  company           Company          @relation(fields: [companyId], references: [id])
+  payrolls          Payroll[]
+  partnerBills      PartnerBill[]
 
   @@map("employees")
 }
@@ -185,17 +198,22 @@ model Payroll {
 }
 
 model Advance {
-  id         Int      @id @default(autoincrement())
-  amount     Float
-  reason     String?
-  date       DateTime
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  employeeId Int
-  companyId  Int
-  company    Company  @relation(fields: [companyId], references: [id])
-  employee   Employee @relation(fields: [employeeId], references: [id])
+  id            Int          @id @default(autoincrement())
+  amount        Float
+  reason        String?
+  date          DateTime
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  employeeId    Int
+  companyId     Int
+  transactionId Int?         // Link to transaction (Salary Advance, Salary)
+  company       Company      @relation(fields: [companyId], references: [id])
+  employee      Employee     @relation(fields: [employeeId], references: [id])
+  transaction   Transaction? @relation(fields: [transactionId], references: [id], onDelete: SetNull)
 
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([transactionId])
   @@map("advances")
 }
 
@@ -416,8 +434,98 @@ model GoodsReceivedNoteItem {
 
 // ==================== END GRN MODULE ====================
 
+// ==================== PARTNER MODULE ====================
+
+model Partner {
+  id                  Int                   @id @default(autoincrement())
+  name                String
+  email               String?
+  phone               String?
+  address             String?
+  partnerType         String                // e.g., "Vendor", "Contractor", "Supplier"
+  gstNumber           String?
+  creditPeriodDays    Int                   @default(30)
+  isActive            Boolean               @default(true)
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  companyId           Int
+  company             Company               @relation(fields: [companyId], references: [id])
+
+  @@index([companyId])
+  @@map("partners")
+}
+
+// ==================== END PARTNER MODULE ====================
+
+// ==================== PARTNER BILLS MODULE ====================
+
+model PartnerBill {
+  id                  Int                   @id @default(autoincrement())
+  companyId           Int
+  employeeId          Int
+  accountId           Int
+  invoiceNo           String
+  billDate            DateTime
+  dueDate             DateTime?
+  amount              Float
+  paidAmount          Float                 @default(0)
+  status              BillStatus            @default(UNPAID)
+  billImagePath       String?
+  remarks             String?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  company             Company               @relation(fields: [companyId], references: [id])
+  employee            Employee              @relation(fields: [employeeId], references: [id])
+  account             Account               @relation(fields: [accountId], references: [id])
+  payments            PartnerBillPayment[]
+
+  @@unique([companyId, employeeId, invoiceNo])
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([accountId])
+  @@index([status])
+  @@map("partner_bills")
+}
+
+model PartnerBillPayment {
+  id                  Int                   @id @default(autoincrement())
+  companyId           Int
+  billId              Int
+  paymentDate         DateTime
+  amount              Float
+  paymentMode         PaymentMode           @default(GPAY)
+  referenceNo         String?
+  transactionId       Int?
+  createdAt           DateTime              @default(now())
+  company             Company               @relation(fields: [companyId], references: [id])
+  bill                PartnerBill           @relation(fields: [billId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([billId])
+  @@map("partner_bill_payments")
+}
+
+// ==================== END PARTNER BILLS MODULE ====================
+
 enum UserRole {
   OWNER
   SITE_MANAGER
   GUEST
+}
+
+enum BillStatus {
+  UNPAID
+  PARTIALLY_PAID
+  FULLY_PAID
+}
+
+enum PaymentMode {
+  GPAY
+  BANK_TRANSFER
+  CASH
+  CHEQUE
+  UPI
+  NEFT
+  RTGS
+  IMPS
 }

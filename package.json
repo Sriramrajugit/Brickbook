@@ -49,6 +49,8 @@
     "prisma": "^5.22.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "sharp": "^0.35.3",
+    "tesseract.js": "^7.0.0",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
@@ -59,9 +61,10 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.1.1",
+    "lightningcss": "^1.32.0",
     "local-ssl-proxy": "^2.0.5",
     "rimraf": "^6.1.2",
-    "tailwindcss": "^4",
+    "tailwindcss": "^4.3.2",
     "tsx": "^4.21.0",
     "typescript": "^5"
   }

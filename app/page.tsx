@@ -5,6 +5,7 @@ import MobileNav from './components/MobileNav'
 import ProfileMenu from './components/ProfileMenu'
 import { useAuth } from './components/AuthProvider'
 import { formatINR } from '@/lib/formatters'
+import Link from 'next/link'
 
 interface Account {
   id: number
@@ -25,10 +26,18 @@ interface Transaction {
   accountId: number
 }
 
+interface PartnerBill {
+  id: number
+  amount: number
+  paidAmount: number
+  status: string
+}
+
 export default function Home() {
   const { isAuthenticated, isLoading, user } = useAuth()
   const [accounts, setAccounts] = useState<Account[]>([])
   const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [bills, setBills] = useState<PartnerBill[]>([])
 
   const fetchAccounts = async () => {
     try {
@@ -58,16 +67,32 @@ export default function Home() {
     }
   }
 
+  const fetchBills = async () => {
+    try {
+      // Fetch all bills for summary (limit=1000)
+      const res = await fetch('/api/bills?limit=1000')
+      if (res.ok) {
+        const result = await res.json()
+        // API returns { data: [...], pagination: {...} }
+        setBills(result.data || [])
+      }
+    } catch (err) {
+      console.error('Error fetching bills:', err)
+    }
+  }
+
   useEffect(() => {
     if (!isAuthenticated) {
       // Clear all data on logout
       setAccounts([])
       setTransactions([])
+      setBills([])
       return
     }
 
     fetchAccounts()
     fetchTransactions()
+    fetchBills()
   }, [isAuthenticated, user?.companyId])
 
   if (isLoading) {
@@ -89,6 +114,13 @@ export default function Home() {
   const totalExpenses = transactions
     .filter(t => t.type === 'Cash-out' || t.type === 'Cash-Out')
     .reduce((sum, t) => sum + t.amount, 0)
+
+  // Calculate pending bills summary
+  const totalBillAmount = bills.reduce((sum, bill) => sum + bill.amount, 0)
+  const totalBillPaid = bills.reduce((sum, bill) => sum + bill.paidAmount, 0)
+  const totalBillPending = totalBillAmount - totalBillPaid
+  const pendingBillsCount = bills.filter(bill => bill.amount - bill.paidAmount > 0).length
+  const billsPaidPercentage = totalBillAmount > 0 ? Math.round((totalBillPaid / totalBillAmount) * 100) : 0
 
   // Get account-level summary (overall, not just this month)
   const getAccountSummary = (accountId: number) => {
@@ -116,7 +148,16 @@ export default function Home() {
       <div className="flex-1 lg:ml-0 pt-16 lg:pt-0">
         <header className="bg-white shadow">
           <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
-            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Dashboard</h1>
+            <div>
+              <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Dashboard</h1>
+              {user?.role === 'SITE_MANAGER' && user?.siteId && (
+                <p className="text-sm text-gray-600 mt-1">
+                  <span className="inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-medium">
+                    Site Manager View - Viewing allocated site data only
+                  </span>
+                </p>
+              )}
+            </div>
             <div className="hidden lg:block">
               <ProfileMenu />
             </div>
@@ -126,7 +167,7 @@ export default function Home() {
           <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
             <div className="sm:px-0">
               {/* Overall Summary */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 lg:gap-6 mb-6 lg:mb-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6 mb-6 lg:mb-8">
                 <div className="bg-white p-6 rounded-lg shadow">
                   <h3 className="text-sm font-medium text-gray-500 uppercase">Total Budget</h3>
                   <p className="text-3xl font-bold text-green-600 mt-2">{formatINR(totalBudget)}</p>
@@ -139,6 +180,14 @@ export default function Home() {
                   <h3 className="text-sm font-medium text-gray-500 uppercase">Total Cash-out</h3>
                   <p className="text-3xl font-bold text-red-600 mt-2">{formatINR(totalExpenses)}</p>
                 </div>
+                <Link href="/bills" className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition cursor-pointer">
+                  <h3 className="text-sm font-medium text-gray-500 uppercase">Supplier Bills Pending</h3>
+                  <p className="text-3xl font-bold text-orange-600 mt-2">{formatINR(totalBillPending)}</p>
+                  <div className="mt-3 flex items-center justify-between">
+                    <span className="text-xs text-gray-600">{pendingBillsCount} pending</span>
+                    <span className="text-xs font-medium text-green-600">{billsPaidPercentage}% paid</span>
+                  </div>
+                </Link>
               </div>
 
               {/* Account-Level Summary Table - Only show if accounts exist */}

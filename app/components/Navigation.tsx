@@ -60,10 +60,11 @@ export default function Navigation() {
   const mainNavItems = [
     { href: '/', label: 'Dashboard' },
     { href: '/transactions', label: 'Transactions' },
+    { href: '/bills', label: 'Bills & Invoices' },
     { href: '/import', label: 'Import Data' },
     { href: '/accounts', label: 'Accounts' },
     { href: '/categories', label: 'Categories' },
-    { href: '/employees', label: 'Employees' },
+    { href: '/employees', label: 'Employees & Partners' },
     { href: '/attendance', label: 'Attendance' },
     { href: '/payroll', label: 'Payroll' },
     { href: '/reports', label: 'Reports' },

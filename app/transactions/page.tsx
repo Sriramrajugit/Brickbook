@@ -5,6 +5,13 @@ import MobileNav from '../components/MobileNav';
 import ProfileMenu from '../components/ProfileMenu';
 import { useAuth } from '../components/AuthProvider';
 import { formatINR, formatDateDDMMYYYY } from '@/lib/formatters';
+import {
+  getTransactionType,
+  requiresEmployee,
+  createsAdvanceRecord,
+  getEmployeeFilter,
+  getCategoriesRequiringEmployee,
+} from '@/lib/transactionConfig';
 
 interface Account {
   id: number;
@@ -21,7 +28,6 @@ interface Employee {
   id: number;
   name: string;
   partnerType: string;
-  status: string;
 }
 
 interface Transaction {
@@ -39,15 +45,17 @@ interface Transaction {
     email: string | null;
     role: string;
   } | null;
+  isLinkedToBillPayment?: boolean;
 }
 
 export default function Transactions() {
-  const { canEdit, isGuest, isOwner } = useAuth();
+  const { canEdit, isGuest, isOwner, user } = useAuth();
   
   // Filter states
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [filterCategory, setFilterCategory] = useState('All')
+  const [filterAccount, setFilterAccount] = useState('All')
   const [searchText, setSearchText] = useState('')
 
   // Pagination states
@@ -146,6 +154,7 @@ export default function Transactions() {
         });
 
         if (filterCategory !== 'All') params.append('category', filterCategory);
+        if (filterAccount !== 'All') params.append('account', filterAccount);
         if (startDate) params.append('startDate', startDate);
         if (endDate) params.append('endDate', endDate);
         if (searchText) params.append('search', searchText);
@@ -167,7 +176,7 @@ export default function Transactions() {
     fetchCategories();
     fetchEmployees();
     fetchTransactions();
-  }, [currentPage, sortBy, sortOrder, filterCategory, startDate, endDate, searchText, limit]);
+  }, [currentPage, sortBy, sortOrder, filterCategory, filterAccount, startDate, endDate, searchText, limit]);
 
   // Helper function to refresh transactions
   const refreshTransactions = async () => {
@@ -179,6 +188,7 @@ export default function Transactions() {
         sortOrder,
       });
       if (filterCategory !== 'All') params.append('category', filterCategory);
+      if (filterAccount !== 'All') params.append('account', filterAccount);
       if (startDate) params.append('startDate', startDate);
       if (endDate) params.append('endDate', endDate);
       if (searchText) params.append('search', searchText);
@@ -204,17 +214,21 @@ export default function Transactions() {
     const category = categories.find(cat => cat.name === categoryName);
     setSelectedCategoryId(category?.id || null);
     
-    // Capital = Cash-In, everything else = Cash-Out
-    if (categoryName === 'Capital') {
-      setTransactionType('Cash-In');
-    } else {
-      setTransactionType('Cash-Out');
-    }
+    // Use config-based logic to set transaction type
+    const txType = getTransactionType(categoryName);
+    setTransactionType(txType as 'Cash-In' | 'Cash-Out');
+    
     // Reset employee selection when category changes
     setSelectedEmployee('');
   };
 
   const handleEdit = async (transaction: Transaction) => {
+    // Prevent editing bill payment transactions
+    if (transaction.isLinkedToBillPayment) {
+      setError('❌ Cannot edit bill payment transactions. Delete the payment from the Bills section to make changes.');
+      return;
+    }
+
     setIsEditMode(true);
     setEditingTransactionId(transaction.id);
     setSelectedCategory(transaction.category);
@@ -235,14 +249,14 @@ export default function Transactions() {
       setSelectedAccount(account.id.toString());
     }
 
-    // For Salary Advance, Salary, or To Contractor - fetch the related employee
-    if (transaction.category === 'Salary Advance' || transaction.category === 'Salary' || transaction.category === 'To Contractor') {
+    // For categories that require employee - fetch the related employee
+    if (requiresEmployee(transaction.category)) {
       try {
         // Fetch all employees to find the partner
         const empRes = await fetch('/api/employees');
         const allEmployees = empRes.ok ? await empRes.json() : [];
         
-        if (transaction.category === 'Salary Advance') {
+        if (createsAdvanceRecord(transaction.category)) {
           // For Salary Advance, also fetch advance records
           const advancesRes = await fetch('/api/advances');
           if (advancesRes.ok) {
@@ -320,16 +334,22 @@ export default function Transactions() {
   };
 
   const handleDelete = async (id: number) => {
+    // Get the transaction details before deletion
+    const txRes = await fetch(`/api/transactions?id=${id}`);
+    const txData = txRes.ok ? await txRes.json() : null;
+    const transaction = txData?.data?.find((t: any) => t.id === id);
+    
+    // Prevent deletion of bill payment transactions
+    if (transaction?.isLinkedToBillPayment) {
+      alert('❌ Cannot delete bill payment transactions. Delete the payment from the Bills section instead.');
+      return;
+    }
+
     if (!confirm('Are you sure you want to delete this transaction?')) {
       return;
     }
 
     try {
-      // Get the transaction details before deletion
-      const txRes = await fetch(`/api/transactions?id=${id}`);
-      const txData = txRes.ok ? await txRes.json() : null;
-      const transaction = txData?.data?.find((t: any) => t.id === id);
-      
       const res = await fetch(`/api/transactions/${id}`, {
         method: 'DELETE',
       });
@@ -339,29 +359,14 @@ export default function Transactions() {
         throw new Error(error.error || 'Failed to delete transaction');
       }
 
-      // If it's a Salary Advance, also delete the corresponding Advance record
-      if (transaction?.category === 'Salary Advance') {
+      // If it creates advance records, also delete the corresponding Advance record
+      if (transaction && createsAdvanceRecord(transaction.category)) {
         try {
-          const advancesRes = await fetch('/api/advances');
-          if (advancesRes.ok) {
-            const advancesData = await advancesRes.json();
-            const matchingAdvance = advancesData.find(
-              (adv: any) => {
-                const advDate = new Date(adv.date).toDateString();
-                const txDate = new Date(transaction.date).toDateString();
-                const amountsMatch = Math.abs(Number(adv.amount) - Number(transaction.amount)) < 0.01;
-                return amountsMatch && advDate === txDate;
-              }
-            );
-            
-            if (matchingAdvance) {
-              await fetch('/api/advances', {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: matchingAdvance.id }),
-              });
-            }
-          }
+          // Delete advance by transaction ID (more reliable than matching by amount/date)
+          await fetch(`/api/advances?transactionId=${id}`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+          });
         } catch (advErr) {
           console.error('Error deleting associated advance:', advErr);
         }
@@ -407,8 +412,8 @@ export default function Transactions() {
       return;
     }
 
-    // Validate: Partner is required for Salary Advance, Salary, and To Contractor
-    if ((data.category === 'Salary Advance' || data.category === 'Salary' || data.category === 'To Contractor') && !selectedEmployee) {
+    // Validate: Partner is required for certain categories
+    if (requiresEmployee(data.category as string) && !selectedEmployee) {
       alert('Please select a partner for ' + data.category);
       return;
     }
@@ -454,8 +459,8 @@ export default function Transactions() {
       // Store edit mode state before resetting
       const wasEditMode = isEditMode;
       
-      // Handle Advance record updates/creation for Salary Advance
-      if ((data.category === 'Salary Advance' || data.category === 'Salary') && selectedEmployee) {
+      // Handle Advance record updates/creation for categories that create advances
+      if (createsAdvanceRecord(data.category as string) && selectedEmployee) {
         try {
           const advancesRes = await fetch('/api/advances');
           if (advancesRes.ok) {
@@ -493,6 +498,7 @@ export default function Transactions() {
                   amount: parseFloat(data.amount as string),
                   reason: data.description as string || data.category,
                   date: data.date as string,
+                  transactionId: editingTransactionId,
                 }),
               });
             } else {
@@ -505,6 +511,7 @@ export default function Transactions() {
                   amount: parseFloat(data.amount as string),
                   reason: data.description as string || data.category,
                   date: data.date as string,
+                  transactionId: savedTransaction.id,
                 }),
               });
             }
@@ -568,10 +575,19 @@ export default function Transactions() {
       <div className="flex-1 lg:ml-0 pt-16 lg:pt-0">
         <header className="bg-white shadow">
           <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-              <span className="mr-3 text-red-600">📝</span>
-              Transactions
-            </h1>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 flex items-center">
+                <span className="mr-3 text-red-600">📝</span>
+                Transactions
+              </h1>
+              {user?.role === 'SITE_MANAGER' && user?.siteId && (
+                <p className="text-sm text-gray-600 mt-1">
+                  <span className="inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-medium">
+                    Site Manager View - Viewing allocated site data only
+                  </span>
+                </p>
+              )}
+            </div>
             <div className="hidden lg:block">
               <ProfileMenu />
             </div>
@@ -660,7 +676,7 @@ export default function Transactions() {
                     </select>
                   </div>
 
-                  {(selectedCategory === 'Salary Advance' || selectedCategory === 'Salary' || selectedCategory === 'To Contractor') && (
+                  {requiresEmployee(selectedCategory) && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700">
                         Partner <span className="text-red-500">*</span>
@@ -682,7 +698,7 @@ export default function Transactions() {
                             const empId = e.target.value;
                             setSelectedEmployee(empId);
                             // Auto-populate description with Partner Name + Category
-                            if ((selectedCategory === 'Salary Advance' || selectedCategory === 'Salary' || selectedCategory === 'To Contractor') && empId) {
+                            if (requiresEmployee(selectedCategory) && empId) {
                               const selectedEmp = employees.find(emp => emp.id.toString() === empId);
                               if (selectedEmp) {
                                 setFormDescription(`${selectedEmp.name} - ${selectedCategory}`);
@@ -695,14 +711,14 @@ export default function Transactions() {
                           <option value="">Select Partner</option>
                           {employees
                             .filter((emp) => {
-                              // Filter based on selected category
-                              if (selectedCategory === 'Salary' || selectedCategory === 'Salary Advance') {
+                              const filter = getEmployeeFilter(selectedCategory);
+                              if (filter === 'Employee') {
                                 return emp.partnerType === 'Employee';
                               }
-                              if (selectedCategory === 'To Contractor') {
+                              if (filter === 'Contractor') {
                                 return emp.partnerType === 'Supplier' || emp.partnerType === 'Contractor';
                               }
-                              return true; // Show all for other categories
+                              return true; // Show all for 'All' filter
                             })
                             .map((emp) => (
                               <option key={emp.id} value={emp.id.toString()}>
@@ -837,7 +853,7 @@ export default function Transactions() {
               {/* Filters */}
               <div className="bg-white p-6 rounded-lg shadow mb-6">
                 <h3 className="text-lg font-medium text-gray-900 mb-4">Transaction Filters</h3>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Search</label>
                     <input
@@ -848,6 +864,32 @@ export default function Transactions() {
                       placeholder="Description or category..."
                       className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                     />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Account</label>
+                    <select
+                      value={filterAccount}
+                      onChange={(e) => setFilterAccount(e.target.value)}
+                      className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="All">All</option>
+                      {accounts.map(account => (
+                        <option key={account.id} value={account.id}>{account.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                    <select
+                      value={filterCategory}
+                      onChange={(e) => setFilterCategory(e.target.value)}
+                      className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="All">All</option>
+                      {categories.map(category => (
+                        <option key={category.id} value={category.name}>{category.name}</option>
+                      ))}
+                    </select>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Start Date <span className="text-xs text-gray-400">(DD/MM/YYYY)</span></label>
@@ -867,19 +909,6 @@ export default function Transactions() {
                       className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
-                    <select
-                      value={filterCategory}
-                      onChange={(e) => setFilterCategory(e.target.value)}
-                      className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      <option value="All">All</option>
-                      {categories.map(category => (
-                        <option key={category.id} value={category.name}>{category.name}</option>
-                      ))}
-                    </select>
-                  </div>
                 </div>
                 <div className="mt-4 flex gap-2">
                   <button
@@ -887,6 +916,7 @@ export default function Transactions() {
                       setStartDate('')
                       setEndDate('')
                       setFilterCategory('All')
+                      setFilterAccount('All')
                       setSearchText('')
                       setCurrentPage(1)
                     }}
@@ -934,6 +964,12 @@ export default function Transactions() {
                         Category {sortBy === 'category' && (sortOrder === 'asc' ? '↑' : '↓')}
                       </th>
                       <th 
+                        onClick={() => handleSort('accountId')}
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      >
+                        Account {sortBy === 'accountId' && (sortOrder === 'asc' ? '↑' : '↓')}
+                      </th>
+                      <th 
                         onClick={() => handleSort('paymentMode')}
                         className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                       >
@@ -961,13 +997,13 @@ export default function Transactions() {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {loading ? (
                       <tr>
-                        <td colSpan={isOwner() ? 7 : 6} className="px-6 py-4 text-center text-sm text-gray-500">
+                        <td colSpan={isOwner() ? 8 : 7} className="px-6 py-4 text-center text-sm text-gray-500">
                           Loading transactions...
                         </td>
                       </tr>
                     ) : transactions.length === 0 ? (
                       <tr>
-                        <td colSpan={isOwner() ? 7 : 6} className="px-6 py-4 text-center text-sm text-gray-500">
+                        <td colSpan={isOwner() ? 8 : 7} className="px-6 py-4 text-center text-sm text-gray-500">
                           No transactions found
                         </td>
                       </tr>
@@ -984,6 +1020,9 @@ export default function Transactions() {
                             {t.category}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {t.account.name}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             {t.paymentMode || 'G-Pay'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -997,13 +1036,25 @@ export default function Transactions() {
                               <div className="flex gap-2">
                                 <button
                                   onClick={() => handleEdit(t)}
-                                  className="text-blue-600 hover:text-blue-900 font-medium"
+                                  disabled={t.isLinkedToBillPayment}
+                                  className={`font-medium ${
+                                    t.isLinkedToBillPayment
+                                      ? 'text-gray-400 cursor-not-allowed'
+                                      : 'text-blue-600 hover:text-blue-900'
+                                  }`}
+                                  title={t.isLinkedToBillPayment ? 'Cannot edit bill payment transactions' : ''}
                                 >
                                   Edit
                                 </button>
                                 <button
                                   onClick={() => handleDelete(t.id)}
-                                  className="text-red-600 hover:text-red-900 font-medium"
+                                  disabled={t.isLinkedToBillPayment}
+                                  className={`font-medium ${
+                                    t.isLinkedToBillPayment
+                                      ? 'text-gray-400 cursor-not-allowed'
+                                      : 'text-red-600 hover:text-red-900'
+                                  }`}
+                                  title={t.isLinkedToBillPayment ? 'Cannot delete bill payment transactions. Delete from Bills section instead.' : ''}
                                 >
                                   Delete
                                 </button>

@@ -17,6 +17,10 @@ interface User {
   status: string;
   companyId: number;
   siteId: number | null;
+  site: {
+    id: number;
+    name: string;
+  } | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -305,7 +309,7 @@ export default function Users() {
                       onChange={(e) => setFormEmail(e.target.value)}
                       disabled={isEditMode}
                       placeholder="user@example.com"
-                      className="mt-1 block w-full border-gray-300 rounded-md shadow-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 disabled:bg-gray-100 disabled:cursor-not-allowed"
                       required
                     />
                   </div>
@@ -319,7 +323,7 @@ export default function Users() {
                       value={formName}
                       onChange={(e) => setFormName(e.target.value)}
                       placeholder="User's full name"
-                      className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2"
                     />
                   </div>
 
@@ -332,7 +336,7 @@ export default function Users() {
                       value={formPassword}
                       onChange={(e) => setFormPassword(e.target.value)}
                       placeholder={isEditMode ? 'Leave blank to keep current password' : 'Enter password'}
-                      className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2"
                       required={!isEditMode}
                     />
                     {isEditMode && (
@@ -347,7 +351,7 @@ export default function Users() {
                     <select
                       value={formRole}
                       onChange={(e) => setFormRole(e.target.value)}
-                      className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2"
                       required
                     >
                       <option value="OWNER">Owner</option>
@@ -363,7 +367,7 @@ export default function Users() {
                     <select
                       value={formSiteId}
                       onChange={(e) => setFormSiteId(e.target.value)}
-                      className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2"
                     >
                       <option value="">No specific site</option>
                       {sites.map(site => (
@@ -406,7 +410,7 @@ export default function Users() {
                     value={searchText}
                     onChange={(e) => setSearchText(e.target.value)}
                     placeholder="Search by name or email..."
-                    className="flex-1 border-gray-300 rounded-md shadow-sm"
+                    className="flex-1 border border-gray-300 rounded-md shadow-sm px-3 py-2"
                   />
                   <button
                     onClick={() => {
@@ -492,7 +496,7 @@ export default function Users() {
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {u.siteId ? `Site #${u.siteId}` : '-'}
+                            {u.site ? u.site.name : '-'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {new Date(u.createdAt).toLocaleDateString()}

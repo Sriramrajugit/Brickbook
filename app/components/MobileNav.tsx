@@ -70,6 +70,7 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
   const navItems = [
     { href: '/', label: 'Dashboard', icon: '📊' },
     { href: '/transactions', label: 'Transactions', icon: '💰' },
+    { href: '/bills', label: 'Bills & Invoices', icon: '📄' },
     { href: '/import', label: 'Import Data', icon: '📥' },
     { href: '/attendance', label: 'Attendance', icon: '📅' },
     { href: '/payroll', label: 'Payroll', icon: '💵' },
@@ -79,7 +80,7 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
   const masterItems = [
     { href: '/accounts', label: 'Accounts', icon: '💼' },
     { href: '/categories', label: 'Categories', icon: '🏷️' },
-    { href: '/employees', label: 'Partners', icon: '👥' },
+    { href: '/employees', label: 'Employees & Partners', icon: '👥' },
     { href: '/users', label: 'Users', icon: '🔐' },
   ]
 

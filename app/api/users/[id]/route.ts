@@ -55,6 +55,12 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         role: true,
         companyId: true,
         siteId: true,
+        site: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         createdAt: true,
         updatedAt: true,
       },
@@ -124,6 +130,12 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
         status: true,
         companyId: true,
         siteId: true,
+        site: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         updatedAt: true,
       },
     });

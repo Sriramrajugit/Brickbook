@@ -10,6 +10,12 @@ interface Employee {
   name: string
   partnerType: string
   etype: string | null
+  email: string | null
+  phone: string | null
+  address: string | null
+  gstNumber: string | null
+  creditPeriodDays: number
+  isActive: boolean
   salary: number | null
   salaryFrequency: string
   status: string
@@ -40,6 +46,12 @@ export default function Employees() {
     name: '',
     partnerType: 'Employee',
     etype: '',
+    email: '',
+    phone: '',
+    address: '',
+    gstNumber: '',
+    creditPeriodDays: '30',
+    isActive: true,
     salary: '',
     salaryFrequency: 'Monthly',
     status: 'Active'
@@ -112,6 +124,7 @@ export default function Employees() {
     const data = {
       ...formData,
       salary: formData.salary ? parseFloat(formData.salary) : null,
+      creditPeriodDays: formData.creditPeriodDays ? parseInt(formData.creditPeriodDays) : 30,
       // Convert Monthly/Daily to M/D for API
       salaryFrequency: formData.salaryFrequency === 'Daily' ? 'D' : 'M',
     }
@@ -169,7 +182,20 @@ export default function Employees() {
   }
 
   const resetForm = () => {
-    setFormData({ name: '', partnerType: 'Employee', etype: '', salary: '', salaryFrequency: 'Monthly', status: 'Active' })
+    setFormData({ 
+      name: '', 
+      partnerType: 'Employee', 
+      etype: '', 
+      email: '',
+      phone: '',
+      address: '',
+      gstNumber: '',
+      creditPeriodDays: '30',
+      isActive: true,
+      salary: '', 
+      salaryFrequency: 'Monthly', 
+      status: 'Active' 
+    })
     setEditingEmployee(null)
   }
 
@@ -181,6 +207,12 @@ export default function Employees() {
       name: employee.name,
       partnerType: employee.partnerType || 'Employee',
       etype: employee.etype || '',
+      email: employee.email || '',
+      phone: employee.phone || '',
+      address: employee.address || '',
+      gstNumber: employee.gstNumber || '',
+      creditPeriodDays: employee.creditPeriodDays ? employee.creditPeriodDays.toString() : '30',
+      isActive: employee.isActive !== false,
       salary: employee.salary ? employee.salary.toString() : '',
       salaryFrequency: displayFreq,
       status: employee.status,
@@ -195,7 +227,7 @@ export default function Employees() {
       <div className="flex-1 lg:ml-0 pt-16 lg:pt-0">
         <header className="bg-white shadow">
           <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-            <h1 className="text-3xl font-bold text-gray-900">Partners</h1>
+            <h1 className="text-3xl font-bold text-gray-900">Employees & Partners</h1>
           </div>
         </header>
         <main>
@@ -292,6 +324,66 @@ export default function Employees() {
                       placeholder={formData.partnerType === 'Employee' ? 'e.g., Manager, Laborer, etc.' : 'e.g., Material Supplier, etc.'}
                     />
                   </div>
+                  {formData.partnerType === 'Supplier' && (
+                    <>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Email</label>
+                        <input
+                          type="email"
+                          value={formData.email}
+                          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Phone</label>
+                        <input
+                          type="tel"
+                          value={formData.phone}
+                          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                        />
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700">Address</label>
+                        <input
+                          type="text"
+                          value={formData.address}
+                          onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">GST Number</label>
+                        <input
+                          type="text"
+                          value={formData.gstNumber}
+                          onChange={(e) => setFormData({ ...formData, gstNumber: e.target.value })}
+                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Credit Period (Days)</label>
+                        <input
+                          type="number"
+                          value={formData.creditPeriodDays}
+                          onChange={(e) => setFormData({ ...formData, creditPeriodDays: e.target.value })}
+                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          <input
+                            type="checkbox"
+                            checked={formData.isActive}
+                            onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                            className="mr-2"
+                          />
+                          Is Active
+                        </label>
+                      </div>
+                    </>
+                  )}
                   {formData.partnerType === 'Employee' && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Salary Frequency</label>

@@ -23,6 +23,19 @@ export async function PUT(
     }
 
     const params = await context.params;
+
+    // Check if this transaction is linked to a bill payment
+    const linkedBillPayment = await prisma.partnerBillPayment.findFirst({
+      where: { transactionId: parseInt(params.id) }
+    });
+
+    if (linkedBillPayment) {
+      return NextResponse.json(
+        { error: 'Cannot edit bill payment transactions. Delete the payment from the Bills section to make changes.' },
+        { status: 403 }
+      );
+    }
+
     const body = await req.json();
     const amount = Number(body.amount);
     const accountId = Number(body.accountId);
@@ -89,6 +102,18 @@ export async function DELETE(
     }
 
     const params = await context.params;
+
+    // Check if this transaction is linked to a bill payment
+    const linkedBillPayment = await prisma.partnerBillPayment.findFirst({
+      where: { transactionId: parseInt(params.id) }
+    });
+
+    if (linkedBillPayment) {
+      return NextResponse.json(
+        { error: 'Cannot delete bill payment transactions. Delete the payment from the Bills section instead.' },
+        { status: 403 }
+      );
+    }
 
     await prisma.transaction.delete({
       where: { id: parseInt(params.id) }

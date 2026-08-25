@@ -198,6 +198,8 @@ async function main() {
     'Salary',
     'Salary Advance',
     'Tea / Food',
+    'To Contractor',
+    'To Supplier',
     'Transport'
   ]
 

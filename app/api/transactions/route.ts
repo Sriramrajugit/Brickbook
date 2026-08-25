@@ -30,6 +30,7 @@ export async function GET(req: NextRequest) {
     const sortBy = searchParams.get('sortBy') || 'date';
     const sortOrder = searchParams.get('sortOrder') || 'desc';
     const category = searchParams.get('category');
+    const account = searchParams.get('account');
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
     const search = searchParams.get('search');
@@ -43,6 +44,9 @@ export async function GET(req: NextRequest) {
     }
     if (category && category !== 'All') {
       where.category = category;
+    }
+    if (account && account !== 'All') {
+      where.accountId = parseInt(account);
     }
     if (startDate || endDate) {
       where.date = {};
@@ -86,8 +90,28 @@ export async function GET(req: NextRequest) {
       },
     });
 
+    // Check which transactions are linked to bill payments (make them read-only)
+    const transactionIds = transactions.map((t: any) => t.id);
+    const linkedBillPayments = await prisma.partnerBillPayment.findMany({
+      where: {
+        transactionId: {
+          in: transactionIds
+        }
+      },
+      select: {
+        transactionId: true
+      }
+    });
+    const linkedTransactionIds = new Set(linkedBillPayments.map((bp: any) => bp.transactionId).filter((id: number | null): id is number => id !== null));
+
+    // Add isLinkedToBillPayment flag to each transaction
+    const transactionsWithFlags = transactions.map((t: any) => ({
+      ...t,
+      isLinkedToBillPayment: linkedTransactionIds.has(t.id)
+    }));
+
     const response = NextResponse.json({
-      data: transactions,
+      data: transactionsWithFlags,
       pagination: {
         page,
         limit,

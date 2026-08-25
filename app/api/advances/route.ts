@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
     const companyId = user.companyId as number
 
     const body = await request.json()
-    const { employeeId, amount, reason, date } = body
+    const { employeeId, amount, reason, date, transactionId } = body
 
     // Validate required fields
     if (!employeeId || !amount || !date) {
@@ -86,6 +86,7 @@ export async function POST(request: NextRequest) {
         amount: parseFloat(amount),
         reason: reason || null,
         date: new Date(date),
+        transactionId: transactionId ? parseInt(transactionId) : null,
       },
       include: {
         employee: {
@@ -150,31 +151,45 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-// DELETE advance
+// DELETE advance (by ID or transactionId)
 export async function DELETE(request: NextRequest) {
   try {
-    // Try to get ID from request body first, then from query params
+    const { searchParams } = new URL(request.url);
+    let transactionId: string | null = null;
     let id: string | null = null;
     
-    try {
-      const body = await request.json();
-      id = body.id ? body.id.toString() : null;
-    } catch (e) {
-      // No body, try query params
-      const { searchParams } = new URL(request.url);
-      id = searchParams.get('id');
+    // Try to get transactionId first (preferred for transaction-linked advances)
+    transactionId = searchParams.get('transactionId');
+    
+    // If no transactionId, try to get id from query or body
+    if (!transactionId) {
+      try {
+        const body = await request.json();
+        id = body.id ? body.id.toString() : null;
+      } catch (e) {
+        // No body, try query params
+        id = searchParams.get('id');
+      }
     }
 
-    if (!id) {
+    if (!transactionId && !id) {
       return NextResponse.json(
-        { error: 'Advance ID is required' },
+        { error: 'Advance ID or Transaction ID is required' },
         { status: 400 },
       )
     }
 
-    await prisma.advance.delete({
-      where: { id: Number(id) },
-    })
+    // Delete by transaction ID (more reliable for Salary Advance/Salary transactions)
+    if (transactionId) {
+      await prisma.advance.deleteMany({
+        where: { transactionId: parseInt(transactionId) },
+      })
+    } else if (id) {
+      // Fallback: delete by advance ID
+      await prisma.advance.delete({
+        where: { id: Number(id) },
+      })
+    }
 
     return NextResponse.json({ message: 'Advance deleted successfully' })
   } catch (error) {

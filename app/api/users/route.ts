@@ -47,6 +47,12 @@ export async function GET(req: NextRequest) {
         status: true,
         companyId: true,
         siteId: true,
+        site: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         createdAt: true,
         updatedAt: true,
       },
@@ -131,6 +137,12 @@ export async function POST(req: NextRequest) {
         role: true,
         companyId: true,
         siteId: true,
+        site: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         createdAt: true,
       },
     });

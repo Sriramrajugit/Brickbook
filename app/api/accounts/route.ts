@@ -31,8 +31,14 @@ export async function GET(_req: NextRequest) {
     console.log('📋 Fetching accounts for companyId:', companyId);
 
     try {
+      // Build where clause: filter by company, and by site if user is a Site Manager
+      const where: any = { companyId };
+      if (user.siteId) {
+        where.siteId = user.siteId;
+      }
+
       const accounts = await prisma.account.findMany({
-        where: { companyId },
+        where,
         orderBy: { name: 'asc' },
         select: {
           id: true,

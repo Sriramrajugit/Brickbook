@@ -134,18 +134,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, 1000)
   }, [handleSessionTimeout])
 
-  // 🔒 CRITICAL: Check auth on mount AND on pathname change (double security check)
+  // 🔒 CRITICAL: Check auth on mount ONLY (not on every route change)
   useEffect(() => {
-    // Skip if auth check already done and pathname hasn't changed to a protected route
-    if (authCheckDoneRef.current && pathname === '/login') return
+    if (authCheckDoneRef.current) return
     
     setIsLoading(true)
     checkAuth()
-  }, [pathname]) // Trigger on mount (pathname is set) and on route changes
+  }, []) // Empty dependency array - run only on mount
+
+  // Handle redirects based on auth state and current pathname (but don't re-check auth)
+  useEffect(() => {
+    if (!authCheckDoneRef.current || isLoading) return // Wait for initial auth check
+
+    // If authenticated and on login page, redirect to home
+    if (isAuthenticatedRef.current && pathname === '/login') {
+      console.log('🔄 [Auth] Redirecting authenticated user from /login to /')
+      router.replace('/')
+    }
+    // If not authenticated and not on login page, redirect to login
+    else if (!isAuthenticatedRef.current && pathname !== '/login') {
+      console.log(`🔄 [Auth] Redirecting unauthenticated user from ${pathname} to /login`)
+      router.replace('/login')
+    }
+  }, [pathname, isLoading, router]) // Trigger on route changes but use existing auth state
 
   const checkAuth = async () => {
     try {
-      setIsLoading(true)
       console.log('🔐 [Auth] Checking authentication...')
       
       const response = await fetch('/api/auth/me', {
@@ -167,25 +181,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           resetSessionActivity()
           startCountdown()
         }, 0)
-        
-        // If on login page and authenticated, redirect to home
-        if (pathname === '/login') {
-          console.log('🔄 [Auth] Redirecting authenticated user from /login to /')
-          router.replace('/')
-        }
       } else {
-        console.log('❌ [Auth] Authentication failed - redirecting to login')
+        console.log('❌ [Auth] Authentication failed')
         setIsAuthenticated(false)
         setUser(null)
         setRemainingSeconds(null)
         isAuthenticatedRef.current = false
         authCheckDoneRef.current = true
-        
-        // If not on login page and not authenticated, redirect to login
-        if (pathname !== '/login') {
-          console.log(`🔄 [Auth] Redirecting unauthenticated user from ${pathname} to /login`)
-          router.replace('/login')
-        }
       }
     } catch (error) {
       console.error('🚨 [Auth] Error during auth check:', error)
@@ -194,11 +196,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setRemainingSeconds(null)
       isAuthenticatedRef.current = false
       authCheckDoneRef.current = true
-      
-      if (pathname !== '/login') {
-        console.log(`🔄 [Auth] Redirecting to /login due to auth check error from ${pathname}`)
-        router.replace('/login')
-      }
     } finally {
       setIsLoading(false)
     }
