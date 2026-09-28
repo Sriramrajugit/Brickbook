@@ -1,8 +1,13 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
+import 'package:package_info_plus/package_info_plus.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
+import 'package:local_auth/local_auth.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -11,34 +16,46 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStateMixin {
+class _LoginScreenState extends State<LoginScreen>
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   final TextEditingController userIdController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final FocusNode userIdFocus = FocusNode();
   final FocusNode passwordFocus = FocusNode();
-  
+
   bool isLoading = false;
   String errorMessage = '';
   bool isPasswordVisible = false;
   bool userIdFocused = false;
   bool passwordFocused = false;
   late AnimationController _fadeController;
+  final LocalAuthentication _localAuth = LocalAuthentication();
+
+  bool _canUseBiometric = false;
+  bool _isBiometricLoading = false;
+  bool _biometricEnabled = false;
+  String currentVersion = "";
 
   @override
   void initState() {
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback(
+          (_) => afterFirstFrameRender(context),
+    );
     super.initState();
     _fadeController = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
     );
     _fadeController.forward();
-    
+
     userIdFocus.addListener(() {
       setState(() => userIdFocused = userIdFocus.hasFocus);
     });
     passwordFocus.addListener(() {
       setState(() => passwordFocused = passwordFocus.hasFocus);
     });
+    _checkBiometricAndAutoLogin();
   }
 
   @override
@@ -48,7 +65,155 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     userIdFocus.dispose();
     passwordFocus.dispose();
     _fadeController.dispose();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  //region Initial Setup
+  Future<void> afterFirstFrameRender(BuildContext context) async {
+    final packageInfo = await getAppVersion();
+
+    setState(() {
+      currentVersion =
+      "${packageInfo['version']}(${packageInfo['buildNumber']})";
+    });
+  }
+
+  //endregion
+
+  Future<Map<String, String>> getAppVersion() async {
+    final packageInfo = await PackageInfo.fromPlatform();
+    String version = packageInfo.version;
+
+    const flavor = String.fromEnvironment('SERVER');
+
+    if (Platform.isIOS) {
+      if (flavor == 'dev') {
+        version = '$version-dev';
+      } else if (flavor == 'prod') {
+        version = '$version-prod';
+      }
+    }
+    return {
+      "version": version,
+      "buildNumber": packageInfo.buildNumber,
+    };
+  }
+
+  Future<void> _checkBiometricAndAutoLogin() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      final token = prefs.getString('auth_token');
+
+      final biometricEnabled =
+          prefs.getBool('biometric_enabled') ?? false;
+
+      final isSupported = await _localAuth.isDeviceSupported();
+      final canCheck = await _localAuth.canCheckBiometrics;
+
+      if (!mounted) return;
+
+      setState(() {
+        _canUseBiometric = isSupported && canCheck;
+        _biometricEnabled = biometricEnabled;
+      });
+
+      // No previous login
+      if (token == null || token.isEmpty) {
+        return;
+      }
+
+      // User has not enabled biometric
+      if (!biometricEnabled) {
+        return;
+      }
+
+      // Device doesn't support biometric
+      if (!isSupported || !canCheck) {
+        return;
+      }
+
+      // Automatically show biometric when app opens
+      await _authenticateWithBiometric();
+
+    } catch (e) {
+      debugPrint('Biometric startup error: $e');
+    }
+  }
+
+  // Future<void> _checkBiometricAvailability() async {
+  //   try {
+  //     final bool isSupported = await _localAuth.isDeviceSupported();
+  //     final bool canCheck = await _localAuth.canCheckBiometrics;
+  //
+  //     if (!mounted) return;
+  //
+  //     setState(() {
+  //       _canUseBiometric = isSupported && canCheck;
+  //     });
+  //   } catch (e) {
+  //     debugPrint('Biometric availability error: $e');
+  //   }
+  // }
+
+  Future<void> _authenticateWithBiometric() async {
+    if (_isBiometricLoading) return;
+
+    setState(() {
+      _isBiometricLoading = true;
+      errorMessage = '';
+    });
+
+    try {
+      final authenticated = await _localAuth.authenticate(
+        localizedReason: 'Authenticate to log in to BrickBook',
+      );
+
+      if (!mounted) return;
+
+      if (authenticated) {
+        final prefs = await SharedPreferences.getInstance();
+
+        final token = prefs.getString('auth_token');
+
+        if (!mounted) return;
+
+        if (token != null && token.isNotEmpty) {
+          ApiService.setToken(token);
+
+          Navigator.of(context).pushReplacementNamed('/');
+        } else {
+          setState(() {
+            errorMessage =
+            'Please log in with your email and password first.';
+          });
+        }
+      }
+    } on PlatformException catch (e) {
+      debugPrint('Biometric error: ${e.code}');
+      debugPrint('Biometric description: ${e.message}');
+
+      if (!mounted) return;
+
+      setState(() {
+        errorMessage = 'Biometric authentication failed.';
+      });
+    } catch (e) {
+      debugPrint('Biometric error: $e');
+
+      if (!mounted) return;
+
+      setState(() {
+        errorMessage = 'Biometric authentication failed.';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isBiometricLoading = false;
+        });
+      }
+    }
   }
 
   Future<void> handleLogin() async {
@@ -79,18 +244,20 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         print('🔐 Login response body: $responseBody');
         final String? token = responseBody['token'];
         print('🔑 Extracted token: $token');
-        
-        if (token != null) {
+
+        if (token != null && token.isNotEmpty) {
           final prefs = await SharedPreferences.getInstance();
+
           await prefs.setString('auth_token', token);
-          print('✅ Token saved to SharedPreferences');
-          
+
+          // Enable biometric login for future app launches
+          await prefs.setBool('biometric_enabled', true);
+
           ApiService.setToken(token);
-          print('✅ Token set in ApiService');
         } else {
           print('❌ No token in login response!');
         }
-        
+
         if (!mounted) return;
         Navigator.of(context).pushReplacementNamed('/');
       } else {
@@ -114,7 +281,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   Widget build(BuildContext context) {
     final isMobile = MediaQuery.of(context).size.width < 600;
     final screenHeight = MediaQuery.of(context).size.height;
-    
+
     return Scaffold(
       body: Container(
         width: double.infinity,
@@ -139,7 +306,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                   physics: const ClampingScrollPhysics(),
                   child: ConstrainedBox(
                     constraints: BoxConstraints(
-                      minHeight: screenHeight -
+                      minHeight:
+                      screenHeight -
                           MediaQuery.of(context).padding.top -
                           MediaQuery.of(context).padding.bottom,
                     ),
@@ -147,7 +315,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         SizedBox(height: isMobile ? 20 : 40),
-                        
+
                         // Main Form Container
                         Center(
                           child: Container(
@@ -173,38 +341,43 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                             ),
                             child: SingleChildScrollView(
                               child: Padding(
-                                padding: EdgeInsets.all(isMobile ? 28 : 36),
+                                padding: EdgeInsets.all(isMobile ? 20 : 36),
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     // Logo with BrickBook image - Shrunk to fit mobile
-                                    Container(
-                                      width: 300,
-                                      height: 80,
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(18),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.black.withOpacity(0.15),
-                                            blurRadius: 12,
-                                            offset: const Offset(0, 4),
-                                          ),
-                                        ],
-                                      ),
-                                      child: ClipRRect(
-                                        borderRadius: BorderRadius.circular(18),
-                                        child: Image.asset(
-                                          'assets/brickbook-logo.png',
-                                          fit: BoxFit.cover,
-                                        ),
-                                      ),
+                                    // Container(
+                                    //   width: 300,
+                                    //   height: 80,
+                                    //   decoration: BoxDecoration(
+                                    //     borderRadius: BorderRadius.circular(18),
+                                    //     boxShadow: [
+                                    //       BoxShadow(
+                                    //         color: Colors.black.withOpacity(0.15),
+                                    //         blurRadius: 12,
+                                    //         offset: const Offset(0, 4),
+                                    //       ),
+                                    //     ],
+                                    //   ),
+                                    //   child: ClipRRect(
+                                    //     borderRadius: BorderRadius.circular(18),
+                                    //     child: Image.asset(
+                                    //       'assets/brickbook-logo_big.png',
+                                    //       fit: BoxFit.cover,
+                                    //     ),
+                                    //   ),
+                                    // ),
+                                    Image.asset(
+                                      'assets/brickbook-logo.png',
+                                      fit: BoxFit.cover,
                                     ),
-                                    
-                                    const SizedBox(height: 80),
-                                    
+                                    // const SizedBox(height: 80),
+
                                     // Email Input
                                     AnimatedContainer(
-                                      duration: const Duration(milliseconds: 200),
+                                      duration: const Duration(
+                                        milliseconds: 200,
+                                      ),
                                       decoration: BoxDecoration(
                                         color: userIdFocused
                                             ? Colors.blue[50]
@@ -218,15 +391,36 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                         ),
                                       ),
                                       child: Padding(
-                                        padding:
-                                            const EdgeInsets.symmetric(horizontal: 4),
-                                        child: TextField(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 4,
+                                        ),
+                                        child: TextFormField(
                                           controller: userIdController,
                                           focusNode: userIdFocus,
-                                          keyboardType: TextInputType.emailAddress,
-                                          textInputAction: TextInputAction.next,
-                                          onSubmitted: (_) =>
+                                          keyboardType:
+                                          TextInputType.emailAddress,
+                                          validator: (value) {
+                                            final email = value?.trim() ?? '';
+
+                                            if (email.isEmpty) {
+                                              return 'Please enter your email';
+                                            }
+
+                                            final emailRegex = RegExp(
+                                              r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
+                                            );
+
+                                            if (!emailRegex.hasMatch(email)) {
+                                              return 'Please enter a valid email';
+                                            }
+
+                                            return null;
+                                          },
+                                          onFieldSubmitted: (_) =>
                                               passwordFocus.requestFocus(),
+                                          textInputAction: TextInputAction.next,
+                                          // onSubmitted: (_) =>
+                                          //     passwordFocus.requestFocus(),
                                           decoration: InputDecoration(
                                             hintText: 'Enter email',
                                             hintStyle: TextStyle(
@@ -243,7 +437,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                             ),
                                             border: InputBorder.none,
                                             contentPadding:
-                                                const EdgeInsets.symmetric(
+                                            const EdgeInsets.symmetric(
                                               horizontal: 12,
                                               vertical: 14,
                                             ),
@@ -256,12 +450,14 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                         ),
                                       ),
                                     ),
-                                    
+
                                     const SizedBox(height: 16),
-                                    
+
                                     // Password Input
                                     AnimatedContainer(
-                                      duration: const Duration(milliseconds: 200),
+                                      duration: const Duration(
+                                        milliseconds: 200,
+                                      ),
                                       decoration: BoxDecoration(
                                         color: passwordFocused
                                             ? Colors.blue[50]
@@ -275,8 +471,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                         ),
                                       ),
                                       child: Padding(
-                                        padding:
-                                            const EdgeInsets.symmetric(horizontal: 4),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 4,
+                                        ),
                                         child: TextField(
                                           controller: passwordController,
                                           focusNode: passwordFocus,
@@ -301,7 +498,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                               onTap: () {
                                                 setState(() {
                                                   isPasswordVisible =
-                                                      !isPasswordVisible;
+                                                  !isPasswordVisible;
                                                 });
                                               },
                                               child: Icon(
@@ -314,7 +511,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                             ),
                                             border: InputBorder.none,
                                             contentPadding:
-                                                const EdgeInsets.symmetric(
+                                            const EdgeInsets.symmetric(
                                               horizontal: 12,
                                               vertical: 14,
                                             ),
@@ -327,9 +524,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                         ),
                                       ),
                                     ),
-                                    
+
                                     const SizedBox(height: 18),
-                                    
+
                                     // Error Message
                                     if (errorMessage.isNotEmpty)
                                       Container(
@@ -340,8 +537,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                             color: Colors.red[200]!,
                                             width: 1,
                                           ),
-                                          borderRadius:
-                                              BorderRadius.circular(10),
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
                                         ),
                                         child: Row(
                                           children: [
@@ -364,10 +562,10 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                           ],
                                         ),
                                       ),
-                                    
+
                                     if (errorMessage.isNotEmpty)
                                       const SizedBox(height: 18),
-                                    
+
                                     // Login Button
                                     Container(
                                       width: double.infinity,
@@ -378,21 +576,25 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                           end: Alignment.bottomRight,
                                           colors: isLoading
                                               ? [
-                                                  Colors.red[600]!
-                                                      .withOpacity(0.7),
-                                                  Colors.red[500]!
-                                                      .withOpacity(0.7)
-                                                ]
+                                            Colors.red[600]!.withOpacity(
+                                              0.7,
+                                            ),
+                                            Colors.red[500]!.withOpacity(
+                                              0.7,
+                                            ),
+                                          ]
                                               : [
-                                                  Colors.red[600]!,
-                                                  Colors.red[500]!
-                                                ],
+                                            Colors.red[600]!,
+                                            Colors.red[500]!,
+                                          ],
                                         ),
                                         borderRadius: BorderRadius.circular(25),
                                         boxShadow: [
                                           if (!isLoading)
                                             BoxShadow(
-                                              color: Colors.red.withOpacity(0.3),
+                                              color: Colors.red.withOpacity(
+                                                0.3,
+                                              ),
                                               blurRadius: 12,
                                               spreadRadius: 0,
                                               offset: const Offset(0, 4),
@@ -403,26 +605,29 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                         color: Colors.transparent,
                                         child: InkWell(
                                           onTap: isLoading ? null : handleLogin,
-                                          borderRadius:
-                                              BorderRadius.circular(25),
+                                          borderRadius: BorderRadius.circular(
+                                            25,
+                                          ),
                                           child: Center(
                                             child: Row(
                                               mainAxisAlignment:
-                                                  MainAxisAlignment.center,
+                                              MainAxisAlignment.center,
                                               mainAxisSize: MainAxisSize.min,
                                               children: [
                                                 if (isLoading) ...[
                                                   SizedBox(
                                                     width: 18,
                                                     height: 18,
-                                                    child:
-                                                        CircularProgressIndicator(
+                                                    child: CircularProgressIndicator(
                                                       strokeWidth: 2.5,
                                                       valueColor:
-                                                          AlwaysStoppedAnimation<
-                                                              Color>(
+                                                      AlwaysStoppedAnimation<
+                                                          Color
+                                                      >(
                                                         Colors.white
-                                                            .withOpacity(0.9),
+                                                            .withOpacity(
+                                                          0.9,
+                                                        ),
                                                       ),
                                                     ),
                                                   ),
@@ -445,9 +650,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                         ),
                                       ),
                                     ),
-                                    
+
                                     const SizedBox(height: 12),
-                                    
+
                                     // Footer
                                     Text(
                                       'Secure login powered by BrickBook',
@@ -457,15 +662,97 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                         fontWeight: FontWeight.w400,
                                       ),
                                     ),
+
+                                    //Biometric
+                                    if (_canUseBiometric) ...[
+                                      const SizedBox(height: 16),
+
+                                      Row(
+                                        children: [
+                                          const Expanded(child: Divider()),
+                                          Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                            ),
+                                            child: Text(
+                                              'OR',
+                                              style: TextStyle(
+                                                color: Colors.grey,
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ),
+                                          const Expanded(child: Divider()),
+                                        ],
+                                      ),
+
+                                      const SizedBox(height: 16),
+
+                                      SizedBox(
+                                        width: double.infinity,
+                                        height: 48,
+                                        child: OutlinedButton.icon(
+                                          onPressed: _isBiometricLoading
+                                              ? null
+                                              : _authenticateWithBiometric,
+                                          icon: _isBiometricLoading
+                                              ? const SizedBox(
+                                            width: 20,
+                                            height: 20,
+                                            child:
+                                            CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                            ),
+                                          )
+                                              : const Icon(
+                                            Icons.fingerprint,
+                                            size: 24,
+                                          ),
+                                          label: Text(
+                                            _isBiometricLoading
+                                                ? 'Authenticating...'
+                                                : 'Login with Biometrics',
+                                          ),
+                                          style: OutlinedButton.styleFrom(
+                                            foregroundColor: Colors.blue[600],
+                                            side: BorderSide(
+                                              color: Colors.blue[200]!,
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                              BorderRadius.circular(25),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ],
                                 ),
                               ),
                             ),
                           ),
                         ),
-                        
+
                         SizedBox(height: isMobile ? 20 : 40),
                       ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Text(
+                    "Version - $currentVersion",
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: Colors.grey[500],
+                      fontWeight: FontWeight.w400,
                     ),
                   ),
                 ),

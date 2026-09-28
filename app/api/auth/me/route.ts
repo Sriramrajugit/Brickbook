@@ -15,6 +15,7 @@ export async function GET() {
       role: user.role,
       companyId: user.companyId,
       siteId: user.siteId,
+      company: user.company,
     },
   });
 }

@@ -3,6 +3,11 @@
 ## Project Overview
 This is a **Next.js 16.1 (App Router) ledger/accounting system** for managing transactions, employees, payroll, and attendance. The app uses **Prisma ORM** with **PostgreSQL**, **JWT authentication**, and **Tailwind CSS v4**.
 
+## Quick Navigation
+- **Admin Panel Guide:** [ADMIN_PANEL_GUIDE.md](../ADMIN_PANEL_GUIDE.md) - Customer management, onboarding, company details
+- **Authentication Setup:** [AUTH-SETUP.md](../AUTH-SETUP.md) - JWT, cookies, authentication flow
+- **Database Schema:** [ER-DIAGRAM.md](../ER-DIAGRAM.md) - Entity relationships, models, structure
+
 ## Architecture & Key Patterns
 
 ### 1. Authentication Flow
@@ -46,6 +51,29 @@ This is a **Next.js 16.1 (App Router) ledger/accounting system** for managing tr
 - **Currency:** Use `formatINR(amount)` from [lib/formatters.ts](../lib/formatters.ts) for all currency displays
 - Returns formatted string: `₹1,23,456.78` (Indian number system with lakhs/crores)
 - **Never** display raw numbers for currency amounts
+
+### 6. Admin Panel (OWNER-only Feature)
+- **Location:** `/admin` page - [app/admin/page.tsx](../app/admin/page.tsx)
+- **Access Control:** Only users with `role: 'OWNER'` can access
+- **Features:**
+  - Onboard new customers with **package selection** (Foundation, Structure, Landmark)
+  - View all companies with statistics and package information (users, employees, accounts, transactions)
+  - Paginated list (10 companies per page)
+  - View detailed company information
+  - Delete companies (with confirmation)
+- **Package Tiers:**
+  - **Foundation:** Dashboard, Transactions, Attendance, Payroll, Reports, Masters (Accounts, Categories, Employees & Partners, Users)
+  - **Structure:** Foundation + Bills & Invoices, Import Data
+  - **Landmark:** Structure + BOQ, Future Modules
+- **API Endpoints:**
+  - `GET /api/admin/companies` - List all companies with pagination (includes package)
+  - `POST /api/admin/companies` - Onboard new customer with package selection
+  - `GET /api/admin/companies/[id]` - Get company details
+  - `DELETE /api/admin/companies/[id]` - Delete a company
+- **Navigation:** Admin Panel link appears in nav for OWNER users only (⚙️ Master → Admin Panel on mobile)
+- **Onboarding Process:** Automatically creates 10 default expense categories (Capital, Salary, Rent, Utilities, etc.)
+- **Package Module Access:** Use `lib/packageModules.ts` utility to check module availability per package
+- **Documentation:** See [PACKAGE_SELECTION_GUIDE.md](../PACKAGE_SELECTION_GUIDE.md) for complete details
 
 ## Development Workflows
 
@@ -122,9 +150,12 @@ Required in `.env`:
 ## Key Files Reference
 - **Auth:** [lib/auth.ts](../lib/auth.ts), [app/api/login/route.ts](../app/api/login/route.ts)
 - **Database:** [lib/prisma.ts](../lib/prisma.ts), [prisma/schema.prisma](../prisma/schema.prisma)
-- **Utilities:** [lib/formatters.ts](../lib/formatters.ts)
+- **Utilities:** [lib/formatters.ts](../lib/formatters.ts), [lib/packageModules.ts](../lib/packageModules.ts)
 - **Layout:** [app/layout.tsx](../app/layout.tsx), [app/components/Navigation.tsx](../app/components/Navigation.tsx)
 - **Config:** [next.config.ts](../next.config.ts), [tsconfig.json](../tsconfig.json)
+- **Documentation:** 
+  - [PACKAGE_SELECTION_GUIDE.md](../PACKAGE_SELECTION_GUIDE.md) - Customer packages and onboarding
+  - [PACKAGE_FEATURE_GATING_EXAMPLES.md](../PACKAGE_FEATURE_GATING_EXAMPLES.md) - Feature access control code examples
 
 ## Important Notes
 - Default login: User ID 1, password "admin" (bcrypt-hashed in DB)

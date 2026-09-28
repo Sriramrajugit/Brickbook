@@ -1,0 +1,10 @@
+SELECT setval('companies_id_seq', (SELECT COALESCE(MAX(id), 0) + 1 FROM companies));
+SELECT setval('sites_id_seq', (SELECT COALESCE(MAX(id), 0) + 1 FROM sites));
+SELECT setval('users_id_seq', (SELECT COALESCE(MAX(id), 0) + 1 FROM users));
+SELECT setval('accounts_id_seq', (SELECT COALESCE(MAX(id), 0) + 1 FROM accounts));
+SELECT setval('categories_id_seq', (SELECT COALESCE(MAX(id), 0) + 1 FROM categories));
+SELECT setval('employees_id_seq', (SELECT COALESCE(MAX(id), 0) + 1 FROM employees));
+SELECT setval('transactions_id_seq', (SELECT COALESCE(MAX(id), 0) + 1 FROM transactions));
+SELECT setval('attendances_id_seq', (SELECT COALESCE(MAX(id), 0) + 1 FROM attendances));
+SELECT setval('payrolls_id_seq', (SELECT COALESCE(MAX(id), 0) + 1 FROM payrolls));
+SELECT setval('advances_id_seq', (SELECT COALESCE(MAX(id), 0) + 1 FROM advances));

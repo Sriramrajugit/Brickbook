@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
+import { createAudit, getClientIP, getUserAgent } from '@/lib/audit'
 
 // LIST employees
 export async function GET(request: NextRequest) {
@@ -92,6 +93,19 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Create audit log
+    await createAudit({
+      companyId: user.companyId,
+      module: 'EMPLOYEE',
+      action: 'CREATE',
+      recordId: employee.id,
+      userId: user.id,
+      afterData: employee,
+      description: `Created employee: ${employee.name}`,
+      ipAddress: getClientIP(request.headers),
+      userAgent: getUserAgent(request.headers),
+    });
+
     console.log('✅ Created employee:', employee);
     return NextResponse.json(employee, { status: 201 });
   } catch (error) {
@@ -131,6 +145,18 @@ export async function PUT(request: NextRequest) {
 
     console.log('📥 API received for update:', { id, name, partnerType, etype, salary, salaryFrequency, status });
 
+    // Fetch original employee for audit
+    const originalEmployee = await prisma.employee.findUnique({
+      where: { id: parseInt(id) },
+    });
+
+    if (!originalEmployee) {
+      return NextResponse.json(
+        { error: 'Employee not found' },
+        { status: 404 }
+      );
+    }
+
     const employee = await prisma.employee.update({
       where: { id: parseInt(id) },
       data: {
@@ -152,6 +178,20 @@ export async function PUT(request: NextRequest) {
         createdAt: true,
         updatedAt: true,
       },
+    });
+
+    // Create audit log
+    await createAudit({
+      companyId: user.companyId,
+      module: 'EMPLOYEE',
+      action: 'UPDATE',
+      recordId: parseInt(id),
+      userId: user.id,
+      beforeData: originalEmployee,
+      afterData: employee,
+      description: `Updated employee: ${employee.name}`,
+      ipAddress: getClientIP(request.headers),
+      userAgent: getUserAgent(request.headers),
     });
 
     console.log('✅ Updated employee:', employee);

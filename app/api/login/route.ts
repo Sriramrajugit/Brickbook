@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { sign } from 'jsonwebtoken'
 import { prisma } from '@/lib/prisma'
+import { createAudit, getClientIP, getUserAgent } from '@/lib/audit'
 
 // Handle CORS preflight requests
 export async function OPTIONS(request: NextRequest) {
@@ -75,6 +76,17 @@ export async function POST(request: NextRequest) {
         updatedAt: new Date() 
       }
     })
+    
+    // Create audit log for login
+    await createAudit({
+      companyId: user.companyId,
+      module: 'LOGIN',
+      action: 'LOGIN',
+      userId: user.id,
+      description: `User ${user.email || `ID: ${user.id}`} logged in`,
+      ipAddress: getClientIP(request.headers),
+      userAgent: getUserAgent(request.headers),
+    });
     
     const token = sign({ userId: user.id }, process.env.JWT_SECRET!)
     

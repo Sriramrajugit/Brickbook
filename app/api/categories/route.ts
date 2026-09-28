@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
+import { createAudit, getClientIP, getUserAgent } from '@/lib/audit';
 
 // GET /api/categories
 export async function GET(_req: NextRequest) {
@@ -59,6 +60,19 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    // Create audit log
+    await createAudit({
+      companyId,
+      module: 'CATEGORY',
+      action: 'CREATE',
+      recordId: category.id,
+      userId: user.id,
+      afterData: category,
+      description: `Created category: ${category.name}`,
+      ipAddress: getClientIP(req.headers),
+      userAgent: getUserAgent(req.headers),
+    });
+
     return NextResponse.json(category);
   } catch (err: any) {
     console.error('Error creating category:', err);
@@ -78,6 +92,14 @@ export async function POST(req: NextRequest) {
 // PUT /api/categories?id=1
 export async function PUT(req: NextRequest) {
   try {
+    const user = await getCurrentUser();
+    if (!user || !user.companyId) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 },
+      );
+    }
+
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
 
@@ -98,12 +120,38 @@ export async function PUT(req: NextRequest) {
       );
     }
 
+    // Fetch original category for audit
+    const originalCategory = await prisma.category.findUnique({
+      where: { id: parseInt(id) },
+    });
+
+    if (!originalCategory) {
+      return NextResponse.json(
+        { error: 'Category not found' },
+        { status: 404 },
+      );
+    }
+
     const category = await prisma.category.update({
       where: { id: parseInt(id) },
       data: {
         name: name.trim(),
         description: description?.trim() || undefined,
       },
+    });
+
+    // Create audit log
+    await createAudit({
+      companyId: user.companyId,
+      module: 'CATEGORY',
+      action: 'UPDATE',
+      recordId: parseInt(id),
+      userId: user.id,
+      beforeData: originalCategory,
+      afterData: category,
+      description: `Updated category: ${category.name}`,
+      ipAddress: getClientIP(req.headers),
+      userAgent: getUserAgent(req.headers),
     });
 
     return NextResponse.json(category);
@@ -125,6 +173,14 @@ export async function PUT(req: NextRequest) {
 // DELETE /api/categories?id=1
 export async function DELETE(req: NextRequest) {
   try {
+    const user = await getCurrentUser();
+    if (!user || !user.companyId) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 },
+      );
+    }
+
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
 
@@ -135,8 +191,33 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
+    // Fetch category before deletion for audit
+    const categoryBeforeDelete = await prisma.category.findUnique({
+      where: { id: parseInt(id) },
+    });
+
+    if (!categoryBeforeDelete) {
+      return NextResponse.json(
+        { error: 'Category not found' },
+        { status: 404 },
+      );
+    }
+
     await prisma.category.delete({
       where: { id: parseInt(id) },
+    });
+
+    // Create audit log
+    await createAudit({
+      companyId: user.companyId,
+      module: 'CATEGORY',
+      action: 'DELETE',
+      recordId: parseInt(id),
+      userId: user.id,
+      beforeData: categoryBeforeDelete,
+      description: `Deleted category: ${categoryBeforeDelete.name}`,
+      ipAddress: getClientIP(req.headers),
+      userAgent: getUserAgent(req.headers),
     });
 
     return NextResponse.json({ success: true });

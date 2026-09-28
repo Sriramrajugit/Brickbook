@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
-import { Prisma, BillStatus } from '@prisma/client';
 
 export async function GET(
   request: NextRequest,
@@ -91,11 +90,11 @@ export async function POST(
     const newPaidAmount = bill.paidAmount + paymentAmount;
 
     // Determine new bill status
-    let newStatus: BillStatus = BillStatus.UNPAID;
+    let newStatus: string = 'UNPAID';
     if (newPaidAmount >= bill.amount) {
-      newStatus = BillStatus.FULLY_PAID;
+      newStatus = 'FULLY_PAID';
     } else if (newPaidAmount > 0) {
-      newStatus = BillStatus.PARTIALLY_PAID;
+      newStatus = 'PARTIALLY_PAID';
     }
 
     // Extract user values for transaction (TypeScript type narrowing)
@@ -104,7 +103,7 @@ export async function POST(
     const siteId = user.siteId || null;
 
     // Use transaction to ensure atomicity
-    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const result = await prisma.$transaction(async (tx: any) => {
       // Create payment record
       const payment = await tx.partnerBillPayment.create({
         data: {

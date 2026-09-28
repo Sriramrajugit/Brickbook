@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import MobileNav from '../components/MobileNav'
 import { useAuth } from '../components/AuthProvider'
 import { formatINR } from '@/lib/formatters'
@@ -18,6 +19,7 @@ type Account = {
 
 export default function Accounts() {
   const { canEdit, isGuest } = useAuth()
+  const router = useRouter()
   const [accounts, setAccounts] = useState<Account[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -320,6 +322,13 @@ export default function Accounts() {
                               </td>
                               {canEdit() && (
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                  <button
+                                    onClick={() => router.push(`/transactions?account=${account.id}`)}
+                                    className="text-green-600 hover:text-green-800 mr-3"
+                                    title="View Transactions"
+                                  >
+                                    📊
+                                  </button>
                                   <button
                                     onClick={() => handleEdit(account)}
                                     className="text-blue-600 hover:text-blue-800 mr-3"

@@ -106,7 +106,7 @@ export default function Login() {
                     id="userId"
                     value={userId}
                     onChange={(e) => setUserId(e.target.value)}
-                    className="bg-transparent flex-1 outline-none text-gray-700 placeholder-gray-400 font-medium text-sm"
+                    className="bg-transparent flex-1 outline-none text-black placeholder-gray-400 font-medium text-sm"
                     placeholder="Enter email"
                     required
                   />
@@ -125,7 +125,7 @@ export default function Login() {
                     id="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="bg-transparent flex-1 outline-none text-gray-700 placeholder-gray-400 font-medium text-sm"
+                    className="bg-transparent flex-1 outline-none text-black placeholder-gray-400 font-medium text-sm"
                     placeholder="Enter password"
                     required
                   />

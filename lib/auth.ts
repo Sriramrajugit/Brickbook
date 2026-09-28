@@ -13,6 +13,10 @@ export interface AuthUser {
   role: UserRole;
   companyId: number | null;
   siteId: number | null;
+  company?: {
+    id: number;
+    name: string;
+  } | null;
 }
 
 // Export verifyToken for JWT verification (used in logout route)
@@ -59,7 +63,17 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
 
       const user = await prisma.user.findUnique({
         where: { id: decoded.userId },
-        select: { id: true, email: true, name: true, role: true, companyId: true, siteId: true }
+        select: { 
+          id: true, 
+          email: true, 
+          name: true, 
+          role: true, 
+          companyId: true, 
+          siteId: true,
+          company: {
+            select: { id: true, name: true }
+          }
+        }
       });
 
       return user;

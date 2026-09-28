@@ -31,3 +31,34 @@ body {
   margin: 0;
   padding: 0;
 }
+
+/* Ensure all input fields have black text color */
+input,
+textarea,
+select {
+  color: #000000 !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #999999 !important;
+}
+
+/* Ensure input text is always visible */
+input:disabled {
+  color: #666666 !important;
+}
+
+input[type="date"],
+input[type="time"],
+input[type="email"],
+input[type="password"],
+input[type="text"],
+input[type="number"],
+input[type="tel"],
+input[type="url"],
+input[type="search"],
+input[type="month"],
+input[type="week"] {
+  color: #000000 !important;
+}

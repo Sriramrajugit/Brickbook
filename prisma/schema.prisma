@@ -14,6 +14,8 @@ model Company {
   name                  String                   @unique
   createdAt             DateTime                 @default(now())
   updatedAt             DateTime                 @updatedAt
+  auditRetentionDays    Int                      @default(365)  // Configurable retention (1 year default)
+  package               CustomerPackage         @default(FOUNDATION)
   accounts              Account[]
   advances              Advance[]
   attendances           Attendance[]
@@ -31,13 +33,14 @@ model Company {
   grns                  GoodsReceivedNote[]
   partnerBills          PartnerBill[]
   partnerBillPayments   PartnerBillPayment[]
+  audits                Audit[]
 
   @@map("companies")
 }
 
 model Site {
   id           Int           @id @default(autoincrement())
-  name         String        @unique
+  name         String
   location     String?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
@@ -47,6 +50,7 @@ model Site {
   transactions Transaction[]
   users        User[]
 
+  @@unique([name, companyId])
   @@index([companyId])
   @@map("sites")
 }
@@ -67,6 +71,7 @@ model User {
   transactions Transaction[]
   purchaseOrdersCreated PurchaseOrder[] @relation("POCreatedBy")
   auditLogs    PurchaseOrderAudit[]
+  audits       Audit[]
   company      Company       @relation(fields: [companyId], references: [id])
   site         Site?         @relation(fields: [siteId], references: [id])
 
@@ -507,6 +512,36 @@ model PartnerBillPayment {
 
 // ==================== END PARTNER BILLS MODULE ====================
 
+// ==================== AUDIT TRAIL MODULE ====================
+
+model Audit {
+  id            Int       @id @default(autoincrement())
+  companyId     Int
+  module        String    // "LOGIN", "TRANSACTION", "CATEGORY", "EMPLOYEE", "BILL"
+  action        String    // "CREATE", "UPDATE", "DELETE", "LOGIN", "LOGOUT"
+  recordId      Int?      // ID of the audited record (null for LOGIN/LOGOUT)
+  userId        Int
+  beforeData    Json?     // Old state of the record (null on CREATE)
+  afterData     Json?     // New state of the record (null on DELETE)
+  description   String    // Human-readable description
+  ipAddress     String?   // IP address of the requester
+  userAgent     String?   // Browser/client info
+  timestamp     DateTime  @default(now())
+  
+  company       Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user          User      @relation(fields: [userId], references: [id])
+
+  @@index([companyId])
+  @@index([module])
+  @@index([action])
+  @@index([userId])
+  @@index([recordId])
+  @@index([timestamp])
+  @@map("audits")
+}
+
+// ==================== END AUDIT TRAIL MODULE ====================
+
 enum UserRole {
   OWNER
   SITE_MANAGER
@@ -528,4 +563,10 @@ enum PaymentMode {
   NEFT
   RTGS
   IMPS
+}
+
+enum CustomerPackage {
+  FOUNDATION
+  STRUCTURE
+  LANDMARK
 }

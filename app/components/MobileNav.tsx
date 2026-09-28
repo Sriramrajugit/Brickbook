@@ -6,7 +6,7 @@ import Image from 'next/image'
 import { useAuth } from './AuthProvider'
 
 interface MobileNavProps {
-  currentPage: string
+  currentPage?: string
 }
 
 export default function MobileNav({ currentPage }: MobileNavProps) {
@@ -70,8 +70,10 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
   const navItems = [
     { href: '/', label: 'Dashboard', icon: '📊' },
     { href: '/transactions', label: 'Transactions', icon: '💰' },
-    { href: '/bills', label: 'Bills & Invoices', icon: '📄' },
-    { href: '/import', label: 'Import Data', icon: '📥' },
+    ...(user?.role === 'OWNER' && user?.company?.name === 'Brickbook.in' ? [
+      { href: '/bills', label: 'Bills & Invoices', icon: '📄' },
+      { href: '/import', label: 'Import Data', icon: '📥' },
+    ] : []),
     { href: '/attendance', label: 'Attendance', icon: '📅' },
     { href: '/payroll', label: 'Payroll', icon: '💵' },
     { href: '/reports', label: 'Reports', icon: '📈' },
@@ -82,22 +84,29 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
     { href: '/categories', label: 'Categories', icon: '🏷️' },
     { href: '/employees', label: 'Employees & Partners', icon: '👥' },
     { href: '/users', label: 'Users', icon: '🔐' },
+    ...(user?.role === 'OWNER' && user?.company?.name === 'Brickbook.in' ? [
+      { href: '/audit', label: 'Audit Trail', icon: '📋' },
+      { href: '/admin', label: 'Admin Panel', icon: '⚡' }
+    ] : []),
   ]
 
-  const isMasterActive = masterItems.some(item => item.href === currentPage)
+  const isMasterActive = currentPage ? masterItems.some(item => item.href === currentPage) : false
 
   return (
     <>
       {/* Mobile Header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 bg-white shadow-md z-50">
-        <div className="flex items-center justify-between p-4">
-          <Image 
-            src="/brickbook-logo.png" 
-            alt="BrickBook" 
-            width={200} 
-            height={50}
-            priority
-          />
+        <div className="flex items-center justify-between p-3">
+          <div className="flex items-center gap-2">
+            <Image 
+              src="/brickbook-logo.png" 
+              alt="BrickBook" 
+              width={120} 
+              height={40}
+              priority
+              style={{ maxWidth: '120px', height: 'auto' }}
+            />
+          </div>
           <button
             onClick={() => setIsOpen(!isOpen)}
             className="p-2 text-gray-600 hover:text-gray-900"

@@ -9,6 +9,7 @@ import 'screens/payroll_screen.dart';
 import 'screens/reports_screen.dart';
 import 'screens/categories_screen.dart';
 import 'screens/profile_screen.dart';
+import 'screens/bills_screen.dart';
 import 'services/sync_manager.dart';
 import 'services/api_service.dart';
 
@@ -78,6 +79,7 @@ class LedgerApp extends StatelessWidget {
         '/payroll': (context) => const PayrollScreen(),
         '/reports': (context) => const ReportsScreen(),
         '/categories': (context) => const CategoriesScreen(),
+        '/bills': (context) => const BillsScreen(),
         '/profile': (context) => const ProfileScreen(),
       },
       // Error handling for navigation

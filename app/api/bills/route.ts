@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
-import { Prisma, BillStatus } from '@prisma/client';
+import { createAudit, getClientIP, getUserAgent } from '@/lib/audit';
 
 export async function GET(request: NextRequest) {
   try {
@@ -135,12 +135,12 @@ export async function POST(request: NextRequest) {
     // Calculate bill status based on paid amount
     const totalAmount = parseFloat(amount);
     const paid = paidAmount ? parseFloat(paidAmount) : 0;
-    let billStatus: BillStatus = BillStatus.UNPAID;
+    let billStatus: string = 'UNPAID';
     if (paid > 0) {
       if (paid >= totalAmount) {
-        billStatus = BillStatus.FULLY_PAID;
+        billStatus = 'FULLY_PAID';
       } else {
-        billStatus = BillStatus.PARTIALLY_PAID;
+        billStatus = 'PARTIALLY_PAID';
       }
     }
 
@@ -150,7 +150,7 @@ export async function POST(request: NextRequest) {
     const siteId = user.siteId || null;
 
     // Use transaction to ensure atomicity
-    const bill = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const bill = await prisma.$transaction(async (tx: any) => {
       // Create bill with accountId
       const newBill = await tx.partnerBill.create({
         data: {
@@ -208,6 +208,19 @@ export async function POST(request: NextRequest) {
           payments: true,
         },
       });
+    });
+
+    // Create audit log
+    await createAudit({
+      companyId: user.companyId,
+      module: 'BILL',
+      action: 'CREATE',
+      recordId: bill.id,
+      userId: user.id,
+      afterData: bill,
+      description: `Created bill: Invoice ${invoiceNo} for ${employee.name} - ₹${amount}`,
+      ipAddress: getClientIP(request.headers),
+      userAgent: getUserAgent(request.headers),
     });
 
     return NextResponse.json({ data: bill }, { status: 201 });

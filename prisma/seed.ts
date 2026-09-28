@@ -3,9 +3,6 @@ import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
 
-// Type for UserRole to avoid importing from Prisma
-type UserRole = 'OWNER' | 'SITE_MANAGER' | 'GUEST'
-
 async function main() {
   // 🔒 PRODUCTION SAFETY: Prevent seeding in production
   if (process.env.NODE_ENV === 'production') {
@@ -22,8 +19,8 @@ async function main() {
   console.log('📝 Creating company...')
   const company = await prisma.company.upsert({
     where: { id: 1 },
-    update: { name: 'Demo Company' },
-    create: { id: 1, name: 'Demo Company' },
+    update: { name: 'Brickbook.in' },
+    create: { id: 1, name: 'Brickbook.in' },
   });
 
   // Create sites linked to company

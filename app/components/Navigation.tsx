@@ -60,8 +60,10 @@ export default function Navigation() {
   const mainNavItems = [
     { href: '/', label: 'Dashboard' },
     { href: '/transactions', label: 'Transactions' },
-    { href: '/bills', label: 'Bills & Invoices' },
-    { href: '/import', label: 'Import Data' },
+    ...(user?.role === 'OWNER' && user?.company?.name === 'Brickbook.in' ? [
+      { href: '/bills', label: 'Bills & Invoices' },
+      { href: '/import', label: 'Import Data' },
+    ] : []),
     { href: '/accounts', label: 'Accounts' },
     { href: '/categories', label: 'Categories' },
     { href: '/employees', label: 'Employees & Partners' },
@@ -69,6 +71,10 @@ export default function Navigation() {
     { href: '/payroll', label: 'Payroll' },
     { href: '/reports', label: 'Reports' },
     { href: '/users', label: 'Users' },
+    ...(user?.role === 'OWNER' && user?.company?.name === 'Brickbook.in' ? [
+      { href: '/audit', label: 'Audit Trail' },
+      { href: '/admin', label: 'Admin Panel' }
+    ] : []),
   ]
 
   return (

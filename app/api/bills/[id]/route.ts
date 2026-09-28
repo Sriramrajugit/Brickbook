@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
+import { createAudit, getClientIP, getUserAgent } from '@/lib/audit';
 
 export async function GET(
   request: NextRequest,
@@ -42,7 +43,7 @@ export async function PUT(
   try {
     const { id } = await params;
     const user = await getCurrentUser();
-    if (!user) {
+    if (!user || !user.companyId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -75,6 +76,20 @@ export async function PUT(
       },
     });
 
+    // Create audit log
+    await createAudit({
+      companyId: user.companyId,
+      module: 'BILL',
+      action: 'UPDATE',
+      recordId: parseInt(id),
+      userId: user.id,
+      beforeData: existingBill,
+      afterData: updatedBill,
+      description: `Updated bill: Invoice ${invoiceNo} - ₹${amount}`,
+      ipAddress: getClientIP(request.headers),
+      userAgent: getUserAgent(request.headers),
+    });
+
     return NextResponse.json({ data: updatedBill });
   } catch (error) {
     console.error('Error updating bill:', error);
@@ -92,7 +107,7 @@ export async function DELETE(
   try {
     const { id } = await params;
     const user = await getCurrentUser();
-    if (!user) {
+    if (!user || !user.companyId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -108,6 +123,19 @@ export async function DELETE(
     // Delete bill (payments will cascade delete)
     await prisma.partnerBill.delete({
       where: { id: parseInt(id) },
+    });
+
+    // Create audit log
+    await createAudit({
+      companyId: user.companyId,
+      module: 'BILL',
+      action: 'DELETE',
+      recordId: parseInt(id),
+      userId: user.id,
+      beforeData: bill,
+      description: `Deleted bill: Invoice ${bill.invoiceNo} - ₹${bill.amount}`,
+      ipAddress: getClientIP(request.headers),
+      userAgent: getUserAgent(request.headers),
     });
 
     return NextResponse.json({

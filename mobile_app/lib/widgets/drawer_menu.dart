@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
 
 class DrawerMenu extends StatelessWidget {
-  final String currentRoute;
+  final String? currentRoute;
   final String? currentPage; // Alternative parameter name for flexibility
 
   const DrawerMenu({
     super.key,
-    required this.currentRoute,
+    this.currentRoute = '/',
     this.currentPage,
   });
 
   @override
   Widget build(BuildContext context) {
-    final activeRoute = currentPage ?? currentRoute;
+    final activeRoute = currentPage ?? currentRoute ?? '/';
     
     return Drawer(
       child: ListView(
@@ -105,6 +105,13 @@ class DrawerMenu extends StatelessWidget {
             title: 'Categories',
             route: '/categories',
             isSelected: activeRoute == '/categories',
+          ),
+          _buildMenuItem(
+            context,
+            icon: Icons.receipt_long,
+            title: 'Bills & Invoices',
+            route: '/bills',
+            isSelected: activeRoute == '/bills',
           ),
           const Divider(height: 24),
           _buildMenuItem(

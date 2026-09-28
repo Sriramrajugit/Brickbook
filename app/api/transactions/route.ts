@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
+import { createAudit, getClientIP, getUserAgent } from '@/lib/audit';
 
 // Handle CORS preflight requests
 export async function OPTIONS(request: NextRequest) {
@@ -240,6 +241,19 @@ export async function POST(req: NextRequest) {
           }
         }
       },
+    });
+
+    // Create audit log
+    await createAudit({
+      companyId,
+      module: 'TRANSACTION',
+      action: 'CREATE',
+      recordId: tx.id,
+      userId: user.id,
+      afterData: tx,
+      description: `Created transaction: ${body.description || 'No description'} - ₹${amount}`,
+      ipAddress: getClientIP(req.headers),
+      userAgent: getUserAgent(req.headers),
     });
 
     return NextResponse.json(tx, { status: 201 });

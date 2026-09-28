@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
+import { createAudit, getClientIP, getUserAgent } from '@/lib/audit';
 
 // PUT /api/transactions/[id] - Update transaction (Owner only)
 export async function PUT(
@@ -10,7 +11,7 @@ export async function PUT(
 ) {
   try {
     const user = await getCurrentUser();
-    if (!user) {
+    if (!user || !user.companyId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -47,6 +48,18 @@ export async function PUT(
       );
     }
 
+    // Fetch the original transaction for audit comparison
+    const originalTransaction = await prisma.transaction.findUnique({
+      where: { id: parseInt(params.id) },
+    });
+
+    if (!originalTransaction) {
+      return NextResponse.json(
+        { error: 'Transaction not found' },
+        { status: 404 }
+      );
+    }
+
     const transaction = await prisma.transaction.update({
       where: { id: parseInt(params.id) },
       data: {
@@ -72,6 +85,20 @@ export async function PUT(
       }
     });
 
+    // Create audit log
+    await createAudit({
+      companyId: user.companyId,
+      module: 'TRANSACTION',
+      action: 'UPDATE',
+      recordId: parseInt(params.id),
+      userId: user.id,
+      beforeData: originalTransaction,
+      afterData: transaction,
+      description: `Updated transaction: ${body.description || 'No description'} - ₹${amount}`,
+      ipAddress: getClientIP(req.headers),
+      userAgent: getUserAgent(req.headers),
+    });
+
     return NextResponse.json(transaction);
   } catch (err) {
     console.error('Error updating transaction:', err);
@@ -89,7 +116,7 @@ export async function DELETE(
 ) {
   try {
     const user = await getCurrentUser();
-    if (!user) {
+    if (!user || !user.companyId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -115,8 +142,33 @@ export async function DELETE(
       );
     }
 
+    // Fetch the transaction before deletion for audit
+    const transactionBeforeDelete = await prisma.transaction.findUnique({
+      where: { id: parseInt(params.id) },
+    });
+
+    if (!transactionBeforeDelete) {
+      return NextResponse.json(
+        { error: 'Transaction not found' },
+        { status: 404 }
+      );
+    }
+
     await prisma.transaction.delete({
       where: { id: parseInt(params.id) }
+    });
+
+    // Create audit log
+    await createAudit({
+      companyId: user.companyId,
+      module: 'TRANSACTION',
+      action: 'DELETE',
+      recordId: parseInt(params.id),
+      userId: user.id,
+      beforeData: transactionBeforeDelete,
+      description: `Deleted transaction: ${transactionBeforeDelete.description || 'No description'} - ₹${transactionBeforeDelete.amount}`,
+      ipAddress: getClientIP(req.headers),
+      userAgent: getUserAgent(req.headers),
     });
 
     return NextResponse.json({ message: 'Transaction deleted successfully' });

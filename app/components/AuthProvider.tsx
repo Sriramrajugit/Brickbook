@@ -10,6 +10,10 @@ interface User {
   role: 'OWNER' | 'SITE_MANAGER' | 'GUEST'
   companyId: number | null
   siteId: number | null
+  company?: {
+    id: number
+    name: string
+  } | null
 }
 
 interface AuthContextType {
