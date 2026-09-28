@@ -20,6 +20,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   List<Category> categories = [];
   List<Employee> employees = [];
   bool isLoading = true;
+  int? filterAccountId; // Account filter
   
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
@@ -115,6 +116,14 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       }
       return false;
     }).toList();
+  }
+
+  List<Transaction> _getFilteredTransactions() {
+    var filtered = transactions;
+    if (filterAccountId != null && filterAccountId != 0) {
+      filtered = filtered.where((t) => t.accountId == filterAccountId).toList();
+    }
+    return filtered;
   }
 
   void _resetFormFields() {
@@ -396,10 +405,39 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
           ? const Center(child: CircularProgressIndicator())
           : transactions.isEmpty
               ? const Center(child: Text('No transactions found'))
-              : ListView.builder(
-                  itemCount: transactions.length,
-                  itemBuilder: (context, index) {
-                    final transaction = transactions[index];
+              : Column(
+                  children: [
+                    // Account Filter Dropdown
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: DropdownButton<int?>(
+                        value: filterAccountId,
+                        isExpanded: true,
+                        items: [
+                          const DropdownMenuItem<int?>(
+                            value: null,
+                            child: Text('All Accounts'),
+                          ),
+                          ...accounts.map((account) =>
+                            DropdownMenuItem<int?>(
+                              value: account.id,
+                              child: Text(account.name),
+                            ),
+                          ).toList(),
+                        ],
+                        onChanged: (value) {
+                          setState(() {
+                            filterAccountId = value;
+                          });
+                        },
+                      ),
+                    ),
+                    // Transactions List
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: _getFilteredTransactions().length,
+                        itemBuilder: (context, index) {
+                          final transaction = _getFilteredTransactions()[index];
                     final account = accounts.firstWhere(
                       (a) => a.id == transaction.accountId,
                       orElse: () => Account(
@@ -467,6 +505,9 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                       ),
                     );
                   },
+                ),
+                    ),
+                  ],
                 ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => showTransactionDialog(),

@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
+import '../models/company.dart';
 
 class DrawerMenu extends StatelessWidget {
   final String? currentRoute;
   final String? currentPage; // Alternative parameter name for flexibility
+  final Company? company;
 
   const DrawerMenu({
     super.key,
     this.currentRoute = '/',
     this.currentPage,
+    this.company,
   });
 
   @override
@@ -106,13 +109,15 @@ class DrawerMenu extends StatelessWidget {
             route: '/categories',
             isSelected: activeRoute == '/categories',
           ),
-          _buildMenuItem(
-            context,
-            icon: Icons.receipt_long,
-            title: 'Bills & Invoices',
-            route: '/bills',
-            isSelected: activeRoute == '/bills',
-          ),
+          // Bills & Invoices - Only show for STRUCTURE+ packages
+          if (_hasModuleAccess('Bills & Invoices'))
+            _buildMenuItem(
+              context,
+              icon: Icons.receipt_long,
+              title: 'Bills & Invoices',
+              route: '/bills',
+              isSelected: activeRoute == '/bills',
+            ),
           const Divider(height: 24),
           _buildMenuItem(
             context,
@@ -132,6 +137,19 @@ class DrawerMenu extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  bool _hasModuleAccess(String moduleName) {
+    if (company == null) return true; // Show by default if no package info
+    
+    final package = company!.package;
+    final foundationModules = ['Dashboard', 'Accounts', 'Transactions', 'Attendance', 'Payroll', 'Reports', 'Categories', 'Employees', 'My Profile'];
+    final structureModules = [...foundationModules, 'Bills & Invoices', 'Import Data'];
+    final landmarkModules = [...structureModules, 'BOQ', 'Future Modules'];
+    
+    if (package == 'LANDMARK') return landmarkModules.contains(moduleName);
+    if (package == 'STRUCTURE') return structureModules.contains(moduleName);
+    return foundationModules.contains(moduleName); // Default to FOUNDATION
   }
 
   Widget _buildMenuItem(

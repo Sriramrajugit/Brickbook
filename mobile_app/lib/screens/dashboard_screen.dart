@@ -167,7 +167,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
         ],
       ),
-      drawer: const DrawerMenu(currentRoute: '/'),
+      drawer: DrawerMenu(currentRoute: '/', company: company),
       body:  SafeArea(
         child: isLoading
           ? const Center(child: CircularProgressIndicator())

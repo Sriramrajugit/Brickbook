@@ -90,7 +90,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final currencyFormat = NumberFormat.currency(symbol: '\$');
+    final currencyFormat = NumberFormat.currency(locale: 'en_IN', symbol: '₹');
 
     return Scaffold(
       appBar: AppBar(
@@ -124,13 +124,28 @@ class _AccountsScreenState extends State<AccountsScreen> {
                       subtitle: Text(
                         'Created: ${DateFormat('MMM d, yyyy').format(account.createdAt)}',
                       ),
-                      trailing: Text(
-                        currencyFormat.format(account.budget),
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: account.budget >= 0 ? Colors.green : Colors.red,
-                          fontSize: 16,
-                        ),
+                      trailing: Wrap(
+                        spacing: 8,
+                        children: [
+                          Text(
+                            currencyFormat.format(account.budget),
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: account.budget >= 0 ? Colors.green : Colors.red,
+                              fontSize: 16,
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.list, color: Colors.green),
+                            onPressed: () {
+                              // Navigate to transactions with this account selected
+                              Navigator.pushNamed(context, '/transactions');
+                              // Note: To implement account pre-filtering, you'd need to pass
+                              // this account ID through a service or provider pattern
+                            },
+                            tooltip: 'View Transactions',
+                          ),
+                        ],
                       ),
                     ),
                   );
