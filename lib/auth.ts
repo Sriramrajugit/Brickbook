@@ -16,6 +16,7 @@ export interface AuthUser {
   company?: {
     id: number;
     name: string;
+    package: 'FOUNDATION' | 'STRUCTURE' | 'LANDMARK';
   } | null;
 }
 
@@ -71,7 +72,7 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
           companyId: true, 
           siteId: true,
           company: {
-            select: { id: true, name: true }
+            select: { id: true, name: true, package: true }
           }
         }
       });

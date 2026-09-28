@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useAuth } from './AuthProvider'
 import SessionTimer from './SessionTimer'
 import MobileNav from './MobileNav'
+import { hasModuleAccess } from '@/lib/packageModules'
 
 export default function Navigation() {
   const pathname = usePathname()
@@ -60,8 +61,10 @@ export default function Navigation() {
   const mainNavItems = [
     { href: '/', label: 'Dashboard' },
     { href: '/transactions', label: 'Transactions' },
-    ...(user?.role === 'OWNER' && user?.company?.name === 'Brickbook.in' ? [
+    ...(user?.company && hasModuleAccess(user.company.package, 'Bills & Invoices') ? [
       { href: '/bills', label: 'Bills & Invoices' },
+    ] : []),
+    ...(user?.company && hasModuleAccess(user.company.package, 'Import Data') ? [
       { href: '/import', label: 'Import Data' },
     ] : []),
     { href: '/accounts', label: 'Accounts' },

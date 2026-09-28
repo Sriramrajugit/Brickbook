@@ -13,6 +13,7 @@ interface User {
   company?: {
     id: number
     name: string
+    package: 'FOUNDATION' | 'STRUCTURE' | 'LANDMARK'
   } | null
 }
 

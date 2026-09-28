@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useAuth } from './AuthProvider'
+import { hasModuleAccess } from '@/lib/packageModules'
 
 interface MobileNavProps {
   currentPage?: string
@@ -70,8 +71,10 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
   const navItems = [
     { href: '/', label: 'Dashboard', icon: '📊' },
     { href: '/transactions', label: 'Transactions', icon: '💰' },
-    ...(user?.role === 'OWNER' && user?.company?.name === 'Brickbook.in' ? [
+    ...(user?.company && hasModuleAccess(user.company.package, 'Bills & Invoices') ? [
       { href: '/bills', label: 'Bills & Invoices', icon: '📄' },
+    ] : []),
+    ...(user?.company && hasModuleAccess(user.company.package, 'Import Data') ? [
       { href: '/import', label: 'Import Data', icon: '📥' },
     ] : []),
     { href: '/attendance', label: 'Attendance', icon: '📅' },
