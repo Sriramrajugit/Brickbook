@@ -1,0 +1,14 @@
+{
+  "version": "5.22.0",
+  "dialect": "postgresql",
+  "isLocked": false,
+  "steps": [
+    {
+      "stepType": "SqlUserProvided",
+      "meta": {
+        "userSupplied": true
+      }
+    }
+  ],
+  "version": "5.22.0"
+}
