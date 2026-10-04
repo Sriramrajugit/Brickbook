@@ -16,93 +16,50 @@ export async function OPTIONS(request: NextRequest) {
 
 export async function GET(_req: NextRequest) {
   try {
-    console.log('📋 GET /api/accounts called');
-    
-    // Get current user for multi-tenancy
     const user = await getCurrentUser();
-    console.log('📋 getCurrentUser result:', user);
     
     if (!user || !user.companyId) {
-      console.log('❌ No user or companyId:', { user, companyId: user?.companyId });
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const companyId = user.companyId as number;
-    console.log('📋 Fetching accounts for companyId:', companyId);
 
-    try {
-      // Build where clause: filter by company, and by site if user is a Site Manager
-      const where: any = { companyId };
-      if (user.siteId) {
-        where.siteId = user.siteId;
-      }
-
-      console.log('📋 Querying accounts with where:', JSON.stringify(where));
-
-      // First, get basic account list
-      const basicAccounts = await prisma.account.findMany({
-        where,
-        orderBy: { name: 'asc' },
-        select: {
-          id: true,
-          name: true,
-          type: true,
-          budget: true,
-          startDate: true,
-          endDate: true,
-          projectStatus: true,
-          companyId: true,
-          createdAt: true,
-          updatedAt: true,
-        }
-      });
-
-      console.log('📋 Basic accounts query returned:', basicAccounts.length, 'accounts');
-
-      // For each account, fetch transaction data separately
-      const accountsWithData = await Promise.all(
-        basicAccounts.map(async (account: any) => {
-          const cashOutTotal = await prisma.transaction.aggregate({
-            where: {
-              accountId: account.id,
-              type: { in: ['Cash-Out', 'Cash-out'] }
-            },
-            _sum: { amount: true }
-          });
-
-          const totalSpent = cashOutTotal._sum.amount || 0;
-
-          return {
-            ...account,
-            totalSpent,
-            balance: account.budget - totalSpent
-          };
-        })
-      );
-      
-      console.log('📋 Found accounts with data:', accountsWithData.length);
-
-      const response = NextResponse.json({
-        data: accountsWithData,
-        pagination: {
-          page: 1,
-          limit: 100,
-          total: accountsWithData.length,
-          totalPages: 1
-        }
-      });
-      response.headers.set('Access-Control-Allow-Origin', '*');
-      return response;
-    } catch (dbErr) {
-      console.error('❌ Database error:', dbErr);
-      throw dbErr;
+    // Build where clause: filter by company, and by site if user is a Site Manager
+    const where: any = { companyId };
+    if (user.siteId) {
+      where.siteId = user.siteId;
     }
+
+    // Simple, fast query - just get basic account info
+    const accounts = await prisma.account.findMany({
+      where,
+      orderBy: { name: 'asc' },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        budget: true,
+        startDate: true,
+        endDate: true,
+        projectStatus: true,
+      }
+    });
+
+    const response = NextResponse.json({
+      data: accounts,
+      pagination: {
+        page: 1,
+        limit: 100,
+        total: accounts.length,
+        totalPages: 1
+      }
+    });
+    response.headers.set('Access-Control-Allow-Origin', '*');
+    return response;
   } catch (err) {
     console.error('❌ Error fetching accounts:', err);
-    const errorMsg = err instanceof Error ? err.message : String(err);
-    console.error('Error details:', errorMsg);
     return NextResponse.json(
-      { error: 'Failed to fetch accounts', details: errorMsg },
+      { error: 'Failed to fetch accounts' },
       { status: 500 },
     );
   }
