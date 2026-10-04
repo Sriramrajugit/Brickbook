@@ -93,6 +93,7 @@ model Account {
   siteId       Int?
   endDate      DateTime?
   startDate    DateTime?
+  projectStatus String?      @default("Yet to start") // Account status: Yet to start, In-progress, Completed
   companyId    Int
   company      Company       @relation(fields: [companyId], references: [id])
   site         Site?         @relation(fields: [siteId], references: [id])

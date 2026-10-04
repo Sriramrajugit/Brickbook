@@ -41,7 +41,6 @@ export async function GET(_req: NextRequest) {
         budget: true,
         startDate: true,
         endDate: true,
-        projectStatus: true,
       }
     });
 
