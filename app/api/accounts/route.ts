@@ -37,7 +37,10 @@ export async function GET(_req: NextRequest) {
         where.siteId = user.siteId;
       }
 
-      const accounts = await prisma.account.findMany({
+      console.log('📋 Querying accounts with where:', JSON.stringify(where));
+
+      // First, get basic account list
+      const basicAccounts = await prisma.account.findMany({
         where,
         orderBy: { name: 'asc' },
         select: {
@@ -51,36 +54,40 @@ export async function GET(_req: NextRequest) {
           companyId: true,
           createdAt: true,
           updatedAt: true,
-          transactions: {
-            select: {
-              amount: true,
-              type: true
-            }
-          }
         }
       });
+
+      console.log('📋 Basic accounts query returned:', basicAccounts.length, 'accounts');
+
+      // For each account, fetch transaction data separately
+      const accountsWithData = await Promise.all(
+        basicAccounts.map(async (account: any) => {
+          const cashOutTotal = await prisma.transaction.aggregate({
+            where: {
+              accountId: account.id,
+              type: { in: ['Cash-Out', 'Cash-out'] }
+            },
+            _sum: { amount: true }
+          });
+
+          const totalSpent = cashOutTotal._sum.amount || 0;
+
+          return {
+            ...account,
+            totalSpent,
+            balance: account.budget - totalSpent
+          };
+        })
+      );
       
-      // Calculate totalSpent for each account
-      const accountsWithExpense = accounts.map((account: any) => {
-        const totalSpent = account.transactions
-          .filter((t: any) => t.type === 'Cash-Out')
-          .reduce((sum: number, t: any) => sum + t.amount, 0);
-        
-        return {
-          ...account,
-          totalSpent,
-          transactions: undefined // Remove transactions from response
-        };
-      });
-      
-      console.log('📋 Found accounts:', accountsWithExpense.length);
+      console.log('📋 Found accounts with data:', accountsWithData.length);
 
       const response = NextResponse.json({
-        data: accountsWithExpense,
+        data: accountsWithData,
         pagination: {
           page: 1,
           limit: 100,
-          total: accountsWithExpense.length,
+          total: accountsWithData.length,
           totalPages: 1
         }
       });
