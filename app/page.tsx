@@ -238,7 +238,19 @@ export default function Home() {
               </div>
 
               {/* Project Financial Summary Table */}
-              {accounts.length > 0 && (
+              {accountsLoading ? (
+                <div className="mb-6 lg:mb-8">
+                  <h2 className="text-xl lg:text-2xl font-bold text-gray-900 mb-4">Project Financial Summary</h2>
+                  <div className="bg-white rounded-lg shadow p-6">
+                    <div className="flex items-center justify-center py-12">
+                      <div className="text-center">
+                        <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
+                        <p className="text-gray-600">Loading accounts...</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : accounts.length > 0 ? (
               <div className="mb-6 lg:mb-8">
                 <h2 className="text-xl lg:text-2xl font-bold text-gray-900 mb-4">Project Financial Summary</h2>
                 <div className="bg-white rounded-lg shadow overflow-x-auto">
@@ -283,6 +295,24 @@ export default function Home() {
                   </table>
                 </div>
               </div>
+              ) : (
+                <div className="mb-6 lg:mb-8">
+                  <h2 className="text-xl lg:text-2xl font-bold text-gray-900 mb-4">Project Financial Summary</h2>
+                  <div className="bg-blue-50 border-l-4 border-blue-400 p-6 rounded">
+                    <div className="flex">
+                      <div className="flex-shrink-0">
+                        <svg className="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M18 5v8a2 2 0 01-2 2h-5l-5 4v-4H4a2 2 0 01-2-2V5a2 2 0 012-2h12a2 2 0 012 2zm-11-1a1 1 0 11-2 0 1 1 0 012 0z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <p className="text-sm text-blue-700">
+                          No accounts created yet. <a href="/accounts" className="font-medium underline hover:text-blue-600">Create your first project account →</a>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
           </div>

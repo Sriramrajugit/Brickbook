@@ -806,19 +806,26 @@ export default function Transactions() {
                     <label className="block text-sm font-medium text-gray-700">
                       Account <span className="text-red-500">*</span>
                     </label>
-                    <select
-                      name="accountId"
-                      value={selectedAccount}
-                      onChange={(e) => setSelectedAccount(e.target.value)}
-                      className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
-                      required
-                    >
-                      {accounts.map(acc => (
-                        <option key={acc.id} value={acc.id}>
-                          {acc.name}
-                        </option>
-                      ))}
-                    </select>
+                    {accounts.length === 0 ? (
+                      <div className="mt-1 w-full p-3 border border-red-300 rounded-md bg-red-50 text-red-700">
+                        ⚠️ No accounts available. Please create an account first.
+                      </div>
+                    ) : (
+                      <select
+                        name="accountId"
+                        value={selectedAccount}
+                        onChange={(e) => setSelectedAccount(e.target.value)}
+                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+                        required
+                      >
+                        <option value="">Select Account</option>
+                        {accounts.map(acc => (
+                          <option key={acc.id} value={acc.id}>
+                            {acc.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </div>
 
                   <div className="md:col-span-2">
