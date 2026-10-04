@@ -1,7 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState } from 'react'
 import Image from 'next/image'
 
 export default function Login() {
@@ -9,19 +8,17 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [isMounted, setIsMounted] = useState(false)
-  const router = useRouter()
-
-  useEffect(() => {
-    setIsMounted(true)
-  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
     setLoading(true)
     setError('')
 
-    console.log('Submitting login...', { userId, password: '***' })
+    console.log('Submitting login...', {
+      userId,
+      password: '***',
+    })
 
     try {
       const response = await fetch('/api/login', {
@@ -30,140 +27,503 @@ export default function Login() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ userId, password }),
-        credentials: 'include', // Important: include cookies
+        credentials: 'include',
       })
 
       console.log('Login response:', response.status, response.ok)
 
       if (response.ok) {
         console.log('Login successful, redirecting...')
-        // Force a complete page reload with cookies
         window.location.replace('/')
       } else {
         const data = await response.json()
+
         console.log('Login failed:', data)
+
         setError(data.error || 'Login failed')
       }
     } catch (err) {
       console.error('Login error:', err)
-      setError('An error occurred. Please try again. Check console for details.')
+
+      setError(
+        'An error occurred. Please try again.'
+      )
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center overflow-hidden relative bg-cover bg-center" suppressHydrationWarning>
-      {/* Background Image */}
-      <div className="absolute inset-0 w-full h-full z-0">
-        {isMounted && (
-          <>
-            {/* Mobile Image - Hidden on md and above */}
-            <Image
-              src="/login-bg-mobile.png"
-              alt="Background Mobile"
-              fill
-              priority
-              className="block md:hidden object-cover"
-              quality={100}
-            />
-            
-            {/* Desktop Image - Hidden below md */}
-            <Image
-              src="/login-bg-web.png"
-              alt="Background Desktop"
-              fill
-              priority
-              className="hidden md:block object-cover"
-              quality={100}
-            />
-            
-            {/* Overlay for better readability */}
-            <div className="absolute inset-0 bg-gradient-to-b from-blue-400/30 via-blue-300/20 to-cyan-300/30"></div>
-          </>
-        )}
-      </div>
+    <div className="min-h-screen w-full bg-[#dceef7] overflow-hidden">
 
-      {/* Content Container */}
-      <div className="relative z-10 flex flex-col items-center justify-center w-full min-h-screen px-4 py-8 md:pt-20">
-       
-        {/* Middle Section - Circular Form Container */}
-        <div className="flex items-center justify-center w-full mt-8 md:mt-32">
-          <div className="bg-white/95 backdrop-blur-md rounded-full shadow-2xl p-8 sm:p-10 md:p-12 w-72 sm:w-80 md:w-96 h-72 sm:h-80 md:h-96 flex flex-col items-center justify-center border border-white/40 relative">
-            
-                      
-            <form onSubmit={handleSubmit} className="w-full space-y-4 flex flex-col items-center">
-              
-              {/* Email Input */}
-              <div className="w-full relative">
-                <div className="flex items-center gap-3 bg-gray-50 px-5 py-3 rounded-full focus-within:ring-2 focus-within:ring-blue-500 transition">
-                  {/* Envelope Icon */}
-                  <svg className="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
+      {/* =========================================================
+          MAIN LOGIN LAYOUT
+      ========================================================= */}
+      <div className="min-h-screen w-full flex">
+
+        {/* =======================================================
+            LEFT SIDE - CONSTRUCTION IMAGE
+        ======================================================= */}
+        <div className="hidden lg:block lg:w-[66%] xl:w-[68%] relative overflow-hidden">
+
+          <Image
+            src="/login-bg-web.png"
+            alt="BrickBook construction management"
+            fill
+            priority
+            quality={100}
+            className="object-cover"
+            sizes="68vw"
+          />
+
+          {/* Soft overlay to blend image into login panel */}
+          <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-[#dceef7]/40 to-transparent pointer-events-none" />
+
+        </div>
+
+
+        {/* =======================================================
+            RIGHT SIDE
+        ======================================================= */}
+        <div
+          className="
+            w-full
+            lg:w-[34%]
+            xl:w-[32%]
+            min-h-screen
+            flex
+            items-center
+            justify-center
+            px-5
+            py-8
+            bg-gradient-to-br
+            from-[#e8f5fb]
+            via-[#d9edf6]
+            to-[#cfe6f1]
+          "
+        >
+
+          {/* =====================================================
+              LOGIN PANEL
+          ===================================================== */}
+          <div
+            className="
+              w-full
+              max-w-[470px]
+              min-h-[680px]
+              rounded-[28px]
+              border
+              border-[#91b9cb]
+              bg-white/20
+              backdrop-blur-[2px]
+              shadow-[0_8px_35px_rgba(61,100,120,0.12)]
+              px-8
+              py-10
+              sm:px-10
+              flex
+              flex-col
+            "
+          >
+
+            {/* =================================================
+                BRICKBOOK BRANDING
+            ================================================= */}
+            <div className="flex flex-col items-center mt-2 mb-10">
+
+              <div className="flex items-center gap-3 justify-center w-full">
+
+                {/* BrickBook Logo Image */}
+                <img
+                  src="/brickbook-logo.png"
+                  alt="BrickBook Logo"
+                  className="w-[220px] h-auto object-contain"
+                />
+
+              </div>
+
+            </div>
+
+
+            {/* =================================================
+                LOGIN FORM
+            ================================================= */}
+            <form
+              onSubmit={handleSubmit}
+              className="flex flex-col flex-1"
+            >
+
+              {/* =================================================
+                  USERNAME
+              ================================================= */}
+              <div className="mb-7">
+
+                <label
+                  htmlFor="userId"
+                  className="
+                    block
+                    mb-2.5
+                    text-[15px]
+                    font-semibold
+                    text-[#182c36]
+                  "
+                >
+                  Username
+                </label>
+
+                <div className="relative">
+
+                  {/* User Icon */}
+                  <div
+                    className="
+                      absolute
+                      left-4
+                      top-1/2
+                      -translate-y-1/2
+                      text-[#7d8d96]
+                      pointer-events-none
+                    "
+                  >
+                    <svg
+                      width="21"
+                      height="21"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                    >
+                      <path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2c-4.42 0-8 2.24-8 5v1h16v-1c0-2.76-3.58-5-8-5Z" />
+                    </svg>
+                  </div>
+
                   <input
                     type="text"
                     id="userId"
                     value={userId}
                     onChange={(e) => setUserId(e.target.value)}
-                    className="bg-transparent flex-1 outline-none text-black placeholder-gray-400 font-medium text-sm"
-                    placeholder="Enter email"
+                    placeholder="owner@brickbook.in"
+                    autoComplete="username"
                     required
+                    className="
+                      w-full
+                      h-[64px]
+                      pl-12
+                      pr-4
+                      rounded-[13px]
+                      border
+                      border-[#b9cbd4]
+                      bg-white/95
+                      text-[16px]
+                      text-[#1b252b]
+                      placeholder:text-[#8997a0]
+                      shadow-[inset_0_1px_3px_rgba(0,0,0,0.05)]
+                      outline-none
+                      transition-all
+                      duration-200
+                      focus:border-[#9b4329]
+                      focus:ring-2
+                      focus:ring-[#b85a3b]/20
+                    "
                   />
+
                 </div>
+
               </div>
 
-              {/* Password Input */}
-              <div className="w-full relative">
-                <div className="flex items-center gap-3 bg-gray-50 px-5 py-3 rounded-full focus-within:ring-2 focus-within:ring-blue-500 transition">
+
+              {/* =================================================
+                  PASSWORD
+              ================================================= */}
+              <div className="mb-6">
+
+                <label
+                  htmlFor="password"
+                  className="
+                    block
+                    mb-2.5
+                    text-[15px]
+                    font-semibold
+                    text-[#182c36]
+                  "
+                >
+                  Password
+                </label>
+
+                <div className="relative">
+
                   {/* Lock Icon */}
-                  <svg className="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm6-10V7a3 3 0 00-6 0v4a3 3 0 006 0z" />
-                  </svg>
+                  <div
+                    className="
+                      absolute
+                      left-4
+                      top-1/2
+                      -translate-y-1/2
+                      text-[#7d8d96]
+                      pointer-events-none
+                    "
+                  >
+                    <svg
+                      width="21"
+                      height="21"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <rect
+                        x="4"
+                        y="10"
+                        width="16"
+                        height="11"
+                        rx="2"
+                      />
+
+                      <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+
+                    </svg>
+                  </div>
+
                   <input
                     type="password"
                     id="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="bg-transparent flex-1 outline-none text-black placeholder-gray-400 font-medium text-sm"
                     placeholder="Enter password"
+                    autoComplete="current-password"
                     required
+                    className="
+                      w-full
+                      h-[64px]
+                      pl-12
+                      pr-4
+                      rounded-[13px]
+                      border
+                      border-[#b9cbd4]
+                      bg-white/95
+                      text-[16px]
+                      text-[#1b252b]
+                      placeholder:text-[#8997a0]
+                      shadow-[inset_0_1px_3px_rgba(0,0,0,0.05)]
+                      outline-none
+                      transition-all
+                      duration-200
+                      focus:border-[#9b4329]
+                      focus:ring-2
+                      focus:ring-[#b85a3b]/20
+                    "
                   />
+
                 </div>
+
               </div>
 
-              {/* Error Message */}
+
+              {/* =================================================
+                  ERROR
+              ================================================= */}
               {error && (
-                <div className="bg-red-50 border border-red-200 text-red-600 px-3 py-2 rounded-lg text-xs font-medium w-full text-center">
+                <div
+                  className="
+                    mb-5
+                    rounded-xl
+                    border
+                    border-red-200
+                    bg-red-50
+                    px-4
+                    py-3
+                    text-center
+                    text-sm
+                    font-medium
+                    text-red-600
+                  "
+                >
                   {error}
                 </div>
               )}
 
-              {/* Log In Button */}
+
+              {/* =================================================
+                  LOGIN BUTTON
+              ================================================= */}
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white font-bold py-2 px-6 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
+                className="
+                  relative
+                  w-full
+                  h-[62px]
+                  rounded-[32px]
+                  overflow-hidden
+                  border-[2px]
+                  border-[#70301d]
+                  bg-[#914021]
+                  shadow-[0_5px_10px_rgba(65,40,30,0.35)]
+                  transition-all
+                  duration-200
+                  hover:brightness-110
+                  hover:-translate-y-[1px]
+                  active:translate-y-[1px]
+                  disabled:opacity-70
+                  disabled:cursor-not-allowed
+                  disabled:hover:translate-y-0
+                "
               >
-                {loading ? (
-                  <>
-                    <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span>Logging in...</span>
-                  </>
-                ) : (
-                  'Log In'
-                )}
+
+                {/* Brick pattern */}
+                <div
+                  className="
+                    absolute
+                    inset-0
+                    opacity-90
+                    pointer-events-none
+                  "
+                  style={{
+                    backgroundImage: `
+                      linear-gradient(
+                        to right,
+                        transparent 0,
+                        transparent 49%,
+                        rgba(91,35,20,0.55) 50%,
+                        transparent 51%
+                      ),
+                      linear-gradient(
+                        to bottom,
+                        transparent 0,
+                        transparent 47%,
+                        rgba(91,35,20,0.55) 48%,
+                        rgba(91,35,20,0.55) 52%,
+                        transparent 53%
+                      )
+                    `,
+                    backgroundSize: '92px 31px',
+                  }}
+                />
+
+                {/* Highlight */}
+                <div
+                  className="
+                    absolute
+                    inset-x-0
+                    top-0
+                    h-[3px]
+                    bg-white/15
+                  "
+                />
+
+                <span
+                  className="
+                    relative
+                    z-10
+                    text-[20px]
+                    font-semibold
+                    text-white
+                    drop-shadow-[0_1px_1px_rgba(0,0,0,0.5)]
+                  "
+                >
+                  {loading ? 'Logging in...' : 'Log In'}
+                </span>
+
               </button>
 
 
+              {/* =================================================
+                  FORGOT PASSWORD
+              ================================================= */}
+              <div className="flex justify-center mt-8">
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    alert('Forgot password feature coming soon')
+                  }}
+                  className="
+                    relative
+                    h-[49px]
+                    min-w-[210px]
+                    px-7
+                    rounded-[25px]
+                    border-[2px]
+                    border-[#71311f]
+                    bg-[#914021]
+                    text-[16px]
+                    font-semibold
+                    text-white
+                    shadow-[0_4px_8px_rgba(65,40,30,0.3)]
+                    transition-all
+                    duration-200
+                    hover:brightness-110
+                    hover:-translate-y-[1px]
+                    active:translate-y-[1px]
+                  "
+                >
+
+                  {/* Small brick pattern */}
+                  <span
+                    className="
+                      absolute
+                      inset-0
+                      rounded-[25px]
+                      opacity-50
+                      pointer-events-none
+                    "
+                    style={{
+                      backgroundImage: `
+                        linear-gradient(
+                          to right,
+                          transparent 0,
+                          transparent 48%,
+                          rgba(91,35,20,0.45) 50%,
+                          transparent 52%
+                        )
+                      `,
+                      backgroundSize: '70px 100%',
+                    }}
+                  />
+
+                  <span className="relative z-10">
+                    Forgot Password?
+                  </span>
+
+                </button>
+
+              </div>
+
+
+              {/* =================================================
+                  BOTTOM SPACE / DECORATION
+              ================================================= */}
+              <div className="flex-1 min-h-[70px] relative">
+
+                <div
+                  className="
+                    absolute
+                    bottom-1
+                    right-0
+                    text-[#ffffff]/80
+                  "
+                >
+                  <svg
+                    width="42"
+                    height="42"
+                    viewBox="0 0 42 42"
+                    fill="none"
+                  >
+                    <path
+                      d="M21 0L25 15L42 21L25 27L21 42L17 27L0 21L17 15L21 0Z"
+                      fill="currentColor"
+                    />
+                  </svg>
+                </div>
+
+              </div>
 
             </form>
+
           </div>
+
         </div>
+
       </div>
+
     </div>
   )
 }

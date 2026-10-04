@@ -243,8 +243,8 @@ export default function Home() {
                 )}
               </div>
 
-              {/* Project Financial Summary Table - Show skeleton while loading accounts */}
-              {!accountsLoading && accounts.length > 0 && (
+              {/* Project Financial Summary Table */}
+              {accounts.length > 0 && (
               <div className="mb-6 lg:mb-8">
                 <h2 className="text-xl lg:text-2xl font-bold text-gray-900 mb-4">Project Financial Summary</h2>
                 <div className="bg-white rounded-lg shadow overflow-x-auto">
