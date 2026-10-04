@@ -142,21 +142,21 @@ class ApiService {
     throw Exception('Failed to create employee');
   }
 
-  // Transactions
-  static Future<List<Transaction>> getTransactions() async {
+  // Transactions - Optimized for mobile with pagination
+  static Future<List<Transaction>> getTransactions({int limit = 50, int page = 1}) async {
     final response = await http.get(
-      Uri.parse('$baseUrl/transactions?limit=1000'),
+      Uri.parse('$baseUrl/transactions?limit=$limit&page=$page'),
       headers: _getHeaders(),
     );
-    print('📈 getTransactions request: $baseUrl/transactions?limit=1000');
-    print('📈 getTransactions response status: ${response.statusCode}');
-    print('📈 getTransactions response body: ${response.body}');
+    print('⚡ getTransactions (limit=$limit, page=$page) - Status: ${response.statusCode}');
     
     if (response.statusCode == 200) {
       final Map<String, dynamic> result = json.decode(response.body);
       // API returns { data: [...], pagination: {...} }
       final List<dynamic> data = result['data'] ?? [];
-      return data.map((json) => Transaction.fromJson(json)).toList();
+      final txList = data.map((json) => Transaction.fromJson(json)).toList();
+      print('✅ Fetched ${txList.length} transactions (optimized)');
+      return txList;
     }
     throw Exception('Failed to load transactions - Status: ${response.statusCode}');
   }

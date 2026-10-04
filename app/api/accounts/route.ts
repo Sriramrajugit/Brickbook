@@ -47,20 +47,40 @@ export async function GET(_req: NextRequest) {
           budget: true,
           startDate: true,
           endDate: true,
+          projectStatus: true,
           companyId: true,
           createdAt: true,
           updatedAt: true,
+          transactions: {
+            select: {
+              amount: true,
+              type: true
+            }
+          }
         }
       });
       
-      console.log('📋 Found accounts:', accounts.length);
+      // Calculate totalSpent for each account
+      const accountsWithExpense = accounts.map((account: any) => {
+        const totalSpent = account.transactions
+          .filter((t: any) => t.type === 'Cash-Out')
+          .reduce((sum: number, t: any) => sum + t.amount, 0);
+        
+        return {
+          ...account,
+          totalSpent,
+          transactions: undefined // Remove transactions from response
+        };
+      });
+      
+      console.log('📋 Found accounts:', accountsWithExpense.length);
 
       const response = NextResponse.json({
-        data: accounts,
+        data: accountsWithExpense,
         pagination: {
           page: 1,
           limit: 100,
-          total: accounts.length,
+          total: accountsWithExpense.length,
           totalPages: 1
         }
       });

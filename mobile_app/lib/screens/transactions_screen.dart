@@ -20,6 +20,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   List<Category> categories = [];
   List<Employee> employees = [];
   bool isLoading = true;
+  bool isLoadingEmployees = false; // Separate loading state for employees
   int? filterAccountId; // Account filter
   
   final TextEditingController _amountController = TextEditingController();
@@ -45,34 +46,31 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   Future<void> loadData() async {
     try {
       setState(() => isLoading = true);
-      print('📥 Loading transactions, accounts, categories, employees...');
+      print('⚡ Loading transactions (optimized parallel)...');
       
-      final txData = await OfflineApiService.getTransactions();
-      print('✅ Loaded ${txData.length} transactions');
+      // PARALLEL LOAD: Accounts, Categories, Transactions
+      // These are fast and critical for UI
+      final results = await Future.wait([
+        OfflineApiService.getAccounts(),
+        OfflineApiService.getCategories(),
+        OfflineApiService.getTransactions(),
+      ]);
       
-      final accData = await OfflineApiService.getAccounts();
-      print('✅ Loaded ${accData.length} accounts: ${accData.map((a) => a.name).join(", ")}');
+      final accData = results[0] as List<Account>;
+      final catData = results[1] as List<Category>;
+      final txData = results[2] as List<Transaction>;
       
-      final catData = await OfflineApiService.getCategories();
-      print('✅ Loaded ${catData.length} categories: ${catData.map((c) => c.name).join(", ")}');
-      
-      // Fetch employees for partner selection
-      List<Employee> empData = [];
-      try {
-        empData = await OfflineApiService.getEmployees();
-        print('✅ Loaded ${empData.length} employees');
-      } catch (e) {
-        print('⚠️ Warning loading employees: $e');
-      }
+      print('✅ Loaded ${accData.length} accounts');
+      print('✅ Loaded ${catData.length} categories');
+      print('✅ Loaded ${txData.length} transactions (optimized)');
       
       setState(() {
         transactions = txData;
         accounts = accData;
         categories = catData;
-        employees = empData;
         if (accounts.isNotEmpty && _selectedAccountId == null) {
           _selectedAccountId = accounts.first.id;
-          print('📍 Selected account: ${accounts.first.name} (id: ${accounts.first.id})');
+          print('📍 Selected account: ${accounts.first.name}');
         }
         if (categories.isNotEmpty && _selectedCategory == null) {
           _selectedCategory = categories.first.name;
@@ -80,6 +78,28 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
           print('📍 Selected category: ${categories.first.name}');
         }
         isLoading = false;
+      });
+      
+      // LAZY LOAD: Employees (less critical, load in background after 500ms)
+      // This prevents blocking the UI with employee data
+      Future.delayed(const Duration(milliseconds: 500), () async {
+        if (!mounted) return;
+        try {
+          setState(() => isLoadingEmployees = true);
+          final empData = await OfflineApiService.getEmployees();
+          print('✅ Loaded ${empData.length} employees (lazy loaded)');
+          if (mounted) {
+            setState(() {
+              employees = empData;
+              isLoadingEmployees = false;
+            });
+          }
+        } catch (e) {
+          print('⚠️ Warning loading employees: $e');
+          if (mounted) {
+            setState(() => isLoadingEmployees = false);
+          }
+        }
       });
     } catch (e) {
       print('❌ Error loading data: $e');

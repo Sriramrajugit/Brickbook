@@ -229,6 +229,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 title: 'Total Budget',
                 amount: getTotalBudget(),
                 color: Colors.green,
+                icon: Icons.home,
+                iconColor: Colors.blue,
               ),
             ),
             const SizedBox(width: 12),
@@ -237,6 +239,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 title: 'Cash In',
                 amount: getTotalIncome(),
                 color: Colors.blue,
+                icon: Icons.check_circle,
+                iconColor: Colors.green,
               ),
             ),
           ],
@@ -249,6 +253,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 title: 'Cash Out',
                 amount: getTotalExpenses(),
                 color: Colors.red,
+                icon: Icons.shopping_cart,
+                iconColor: Colors.red,
               ),
             ),
             const SizedBox(width: 12),
@@ -259,6 +265,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 color: (getTotalIncome() - getTotalExpenses()) >= 0
                     ? Colors.green
                     : Colors.red,
+                icon: Icons.description,
+                iconColor: Colors.orange,
               ),
             ),
           ],
@@ -271,13 +279,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
     required String title,
     required double amount,
     required Color color,
+    required IconData icon,
+    required Color iconColor,
   }) {
     return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Icon with colored background
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: iconColor.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: iconColor, size: 24),
+            ),
+            const SizedBox(height: 12),
             Text(
               title,
               style: TextStyle(
