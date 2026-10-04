@@ -93,16 +93,10 @@ export default function Home() {
       return
     }
 
-    // Priority: Fetch stats immediately
+    // Fetch all data immediately (stats, accounts, bills)
     fetchStats()
+    fetchAccounts()
     fetchBills()
-
-    // Deferred: Fetch full accounts table after 500ms
-    const timer = setTimeout(() => {
-      fetchAccounts()
-    }, 500)
-
-    return () => clearTimeout(timer)
   }, [isAuthenticated, user?.companyId])
 
   if (!isAuthenticated) {
