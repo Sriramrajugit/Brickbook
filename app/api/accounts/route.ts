@@ -30,7 +30,7 @@ export async function GET(_req: NextRequest) {
       where.siteId = user.siteId;
     }
 
-    // Simple, fast query - just get basic account info
+    // Get basic account info
     const accounts = await prisma.account.findMany({
       where,
       orderBy: { name: 'asc' },
@@ -41,15 +41,50 @@ export async function GET(_req: NextRequest) {
         budget: true,
         startDate: true,
         endDate: true,
+        projectStatus: true,
       }
     });
 
+    // For each account, fetch transaction aggregations
+    const accountsWithData = await Promise.all(
+      accounts.map(async (account: any) => {
+        // Sum of Cash-Out transactions (expenses)
+        const cashOutResult = await prisma.transaction.aggregate({
+          where: {
+            accountId: account.id,
+            type: { in: ['Cash-Out', 'Cash-out'] }
+          },
+          _sum: { amount: true }
+        });
+
+        // Sum of Cash-In transactions (received)
+        const cashInResult = await prisma.transaction.aggregate({
+          where: {
+            accountId: account.id,
+            type: { in: ['Cash-In', 'Cash-in'] }
+          },
+          _sum: { amount: true }
+        });
+
+        const totalSpent = cashOutResult._sum.amount || 0;
+        const totalReceived = cashInResult._sum.amount || 0;
+        const balance = account.budget - totalSpent;
+
+        return {
+          ...account,
+          totalSpent,
+          totalReceived,
+          balance
+        };
+      })
+    );
+
     const response = NextResponse.json({
-      data: accounts,
+      data: accountsWithData,
       pagination: {
         page: 1,
         limit: 100,
-        total: accounts.length,
+        total: accountsWithData.length,
         totalPages: 1
       }
     });

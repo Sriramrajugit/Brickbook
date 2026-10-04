@@ -13,7 +13,9 @@ interface Account {
   type: string
   budget: number
   totalSpent: number
+  totalReceived: number
   balance: number
+  projectStatus: string
 }
 
 interface Transaction {
@@ -269,21 +271,28 @@ export default function Home() {
                     </thead>
                     <tbody className="divide-y">
                       {accounts.map(account => {
-                        const status = account.balance >= 0 ? 'On Track' : 'Over Budget'
+                        // Map projectStatus to display format
+                        const statusMap: {[key: string]: {label: string, color: string}} = {
+                          'Yet to start': { label: '● Yet to start', color: 'bg-gray-100 text-gray-800' },
+                          'In-progress': { label: '● In-progress', color: 'bg-blue-100 text-blue-800' },
+                          'Completed': { label: '● Completed', color: 'bg-green-100 text-green-800' }
+                        };
+                        const statusDisplay = statusMap[account.projectStatus as string] || { label: `● ${account.projectStatus}`, color: 'bg-gray-100 text-gray-800' };
+                        
                         return (
                           <tr key={account.id} className="hover:bg-gray-50">
                             <td className="px-6 py-4 text-sm font-medium text-gray-900">{account.name}</td>
                             <td className="px-6 py-4 text-sm text-gray-700">{account.type}</td>
                             <td className="px-6 py-4 text-sm text-center">
-                              <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${status === 'Over Budget' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
-                                {status === 'Over Budget' ? '● Over Budget' : '● On Track'}
+                              <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${statusDisplay.color}`}>
+                                {statusDisplay.label}
                               </span>
                             </td>
                             <td className="px-6 py-4 text-sm text-right text-gray-900">{formatINR(account.budget)}</td>
-                            <td className="px-6 py-4 text-sm text-right text-green-600 font-medium">{formatINR(account.totalSpent || 0)}</td>
+                            <td className="px-6 py-4 text-sm text-right text-green-600 font-medium">{formatINR(account.totalReceived || 0)}</td>
                             <td className="px-6 py-4 text-sm text-right text-red-600 font-medium">{formatINR(account.totalSpent || 0)}</td>
-                            <td className={`px-6 py-4 text-sm text-right font-semibold ${account.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                              {formatINR(account.balance)}
+                            <td className={`px-6 py-4 text-sm text-right font-semibold ${(account.balance || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              {formatINR(account.balance || 0)}
                             </td>
                             <td className="px-6 py-4 text-sm text-center">
                               <a href="/accounts" className="text-blue-600 hover:text-blue-800 font-medium">Manage →</a>
