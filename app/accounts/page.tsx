@@ -126,7 +126,7 @@ export default function Accounts() {
   }
 
   const handleCancel = () => {
-    setFormData({ name: '', type: '', budget: '', address: '', startDate: '', endDate: '' })
+    setFormData({ name: '', type: '', budget: '', address: '', startDate: '', endDate: '', projectStatus: 'Yet to start' })
     setEditingId(null)
     setShowForm(false)
   }
