@@ -95,16 +95,13 @@ export default function Transactions() {
       try {
         // /api/accounts returns ONLY id and name (restricted for security)
         const res = await fetch('/api/accounts');
-        console.log('📋 Accounts response status:', res.status);
         if (!res.ok) {
           const errorData = await res.json();
-          console.error('❌ Accounts API error:', errorData);
           throw new Error(`Failed to fetch accounts: ${res.status} ${errorData?.error}`);
         }
         const response = await res.json();
         // /api/accounts returns { data: [...], pagination: {...} }
         const accountsList = response.data || response;
-        console.log('📋 Accounts loaded:', accountsList);
         setAccounts(accountsList);
         // Set first account as default
         if (Array.isArray(accountsList) && accountsList.length > 0) {
@@ -452,8 +449,6 @@ export default function Transactions() {
         date: data.date as string,
         accountId: Number(data.accountId as string),
       };
-
-      console.log('📤 Sending transaction data:', bodyData);
       
       // POST or PUT to API to save to database
       const res = await fetch(url, {
@@ -642,7 +637,7 @@ export default function Transactions() {
               )}
 
               {/* Add Transaction - Only for OWNER and SITE_MANAGER */}
-              {canEdit() && (
+              {canEdit() && accounts.length > 0 && categories.length > 0 && (
               <div className="bg-white p-6 rounded-lg shadow mb-6">
                 <h3 className="text-lg font-medium text-gray-900 mb-4">
                   {isEditMode ? 'Edit Transaction' : 'Add New Entry'}
@@ -820,7 +815,7 @@ export default function Transactions() {
                       >
                         <option value="">Select Account</option>
                         {accounts.map(acc => (
-                          <option key={acc.id} value={acc.id}>
+                          <option key={acc.id} value={acc.id.toString()}>
                             {acc.name}
                           </option>
                         ))}
