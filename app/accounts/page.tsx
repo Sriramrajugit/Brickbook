@@ -14,6 +14,7 @@ type Account = {
   address?: string | null
   startDate?: string | null
   endDate?: string | null
+  projectStatus?: string | null
   totalSpent?: number
   balance?: number
 }
