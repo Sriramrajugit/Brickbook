@@ -38,6 +38,7 @@ export async function GET(_req: NextRequest) {
         budget: true,
         startDate: true,
         endDate: true,
+        projectStatus: true,
         createdAt: true,
         updatedAt: true,
         transactions: {
@@ -69,6 +70,7 @@ export async function GET(_req: NextRequest) {
         budget: account.budget,
         startDate: account.startDate,
         endDate: account.endDate,
+        projectStatus: account.projectStatus || 'Yet to start',
         totalSpent: totalSpent,
         createdAt: account.createdAt,
         updatedAt: account.updatedAt,

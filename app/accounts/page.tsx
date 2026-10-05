@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import MobileNav from '../components/MobileNav'
 import { useAuth } from '../components/AuthProvider'
 import { formatINR } from '@/lib/formatters'
+import { getAvailableStatuses, getStatusBadgeClass, getStatusDisplay } from '@/lib/accountConfig'
 
 type Account = {
   id: number
@@ -74,27 +75,37 @@ export default function Accounts() {
       const url = editingId ? `/api/accounts?id=${editingId}` : '/api/accounts'
       const method = editingId ? 'PUT' : 'POST'
       
+      const bodyData = {
+        name: formData.name,
+        type: formData.type,
+        budget: parseFloat(formData.budget),
+        address: formData.address || null,
+        startDate: formData.startDate || null,
+        endDate: formData.endDate || null,
+        projectStatus: formData.projectStatus || 'Yet to start'
+      }
+      
+      console.log('📤 Form submitting:', bodyData, 'to', url, 'with method', method);
+      
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: formData.name,
-          type: formData.type,
-          budget: parseFloat(formData.budget),
-          address: formData.address || null,
-          startDate: formData.startDate || null,
-          endDate: formData.endDate || null
-        })
+        body: JSON.stringify(bodyData)
       })
       
       if (response.ok) {
-        setFormData({ name: '', type: '', budget: '', address: '', startDate: '', endDate: '' })
+        setFormData({ name: '', type: '', budget: '', address: '', startDate: '', endDate: '', projectStatus: 'Yet to start' })
         setShowForm(false)
         setEditingId(null)
         fetchAccounts()
+      } else {
+        const errorData = await response.json()
+        console.error('❌ API Error:', errorData)
+        alert(`Error saving account: ${errorData.error || 'Unknown error'}`)
       }
     } catch (error) {
-      console.error('Error saving account:', error)
+      console.error('❌ Error saving account:', error)
+      alert(`Error: ${error}`)
     }
   }
 
@@ -105,7 +116,8 @@ export default function Accounts() {
       budget: account.budget.toString(),
       address: account.address || '',
       startDate: account.startDate ? account.startDate.split('T')[0] : '',
-      endDate: account.endDate ? account.endDate.split('T')[0] : ''
+      endDate: account.endDate ? account.endDate.split('T')[0] : '',
+      projectStatus: account.projectStatus || 'Yet to start'
     })
     setEditingId(account.id)
     setShowForm(true)
@@ -256,6 +268,20 @@ export default function Accounts() {
                           className="w-full p-2 border border-gray-300 rounded-lg"
                         />
                       </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          📊 Account Status
+                        </label>
+                        <select
+                          value={formData.projectStatus}
+                          onChange={(e) => setFormData({...formData, projectStatus: e.target.value})}
+                          className="w-full p-2 border border-gray-300 rounded-lg"
+                        >
+                          {getAvailableStatuses().map(status => (
+                            <option key={status} value={status}>{status}</option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                     <div className="flex gap-3">
                       <button
@@ -294,6 +320,7 @@ export default function Accounts() {
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">�💰 Budget Planned</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">📅 Start Date</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">📅 End Date</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">📊 Account Status</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">💸 Expense So Far</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">⚙️ Actions</th>
                         </tr>
@@ -317,6 +344,11 @@ export default function Accounts() {
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatINR(account.budget)}</td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{formatDate(account.startDate)}</td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{formatDate(account.endDate)}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                <span className={getStatusBadgeClass(account.projectStatus)}>
+                                  {getStatusDisplay(account.projectStatus).label}
+                                </span>
+                              </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-red-600">
                                 {formatINR(expenseSoFar)}
                               </td>

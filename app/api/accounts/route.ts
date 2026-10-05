@@ -111,7 +111,7 @@ export async function POST(req: NextRequest) {
     const companyId = user.companyId as number
 
     const body = await req.json();
-    const { name, type, budget, address, startDate, endDate } = body;
+    const { name, type, budget, address, startDate, endDate, projectStatus } = body;
 
     if (!name || !type || budget === undefined) {
       return NextResponse.json(
@@ -128,6 +128,7 @@ export async function POST(req: NextRequest) {
         address: address || null,
         startDate: startDate ? new Date(startDate) : undefined,
         endDate: endDate ? new Date(endDate) : undefined,
+        projectStatus: projectStatus || 'Yet to start',
         companyId: companyId,
         siteId: user.siteId ?? undefined,
       },
@@ -162,7 +163,9 @@ export async function PUT(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { name, type, budget, address, startDate, endDate } = body;
+    const { name, type, budget, address, startDate, endDate, projectStatus } = body;
+
+    console.log('📝 API Received PUT body:', { name, type, budget, address, startDate, endDate, projectStatus });
 
     if (!name || !type || budget === undefined) {
       return NextResponse.json(
@@ -170,6 +173,8 @@ export async function PUT(req: NextRequest) {
         { status: 400 }
       );
     }
+
+    console.log('🔄 Updating account ID:', id, 'with projectStatus:', projectStatus);
 
     const account = await prisma.account.update({
       where: { id: parseInt(id) },
@@ -180,14 +185,16 @@ export async function PUT(req: NextRequest) {
         address: address || null,
         startDate: startDate ? new Date(startDate) : undefined,
         endDate: endDate ? new Date(endDate) : undefined,
+        projectStatus: projectStatus || 'Yet to start',
       },
     });
 
+    console.log('✅ Account updated:', account);
     return NextResponse.json(account);
   } catch (err) {
-    console.error('Error updating account:', err);
+    console.error('❌ Error updating account:', err);
     return NextResponse.json(
-      { error: 'Failed to update account' },
+      { error: 'Failed to update account', details: String(err) },
       { status: 500 }
     );
   }
