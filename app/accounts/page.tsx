@@ -31,7 +31,8 @@ export default function Accounts() {
     budget: '',
     address: '',
     startDate: '',
-    endDate: ''
+    endDate: '',
+    projectStatus: 'Yet to start'
   })
 
   useEffect(() => {
