@@ -10,33 +10,33 @@ datasource db {
 }
 
 model Company {
-  id                    Int                      @id @default(autoincrement())
-  name                  String                   @unique
-  createdAt             DateTime                 @default(now())
-  updatedAt             DateTime                 @updatedAt
-  auditRetentionDays    Int                      @default(365)  // Configurable retention (1 year default)
-  package               CustomerPackage         @default(FOUNDATION)
-  isDemoAccount         Boolean                  @default(false)
-  demoStartedAt         DateTime?
-  demoExpiryDate        DateTime?
-  accounts              Account[]
-  advances              Advance[]
-  attendances           Attendance[]
-  categories            Category[]
-  employees             Employee[]
-  items                 Item[]
-  payrolls              Payroll[]
-  sites                 Site[]
-  suppliers             Supplier[]
-  partners              Partner[]
-  transactions          Transaction[]
-  users                 User[]
-  purchaseOrders        PurchaseOrder[]
-  purchaseOrderAudits   PurchaseOrderAudit[]
-  grns                  GoodsReceivedNote[]
-  partnerBills          PartnerBill[]
-  partnerBillPayments   PartnerBillPayment[]
-  audits                Audit[]
+  id                  Int                  @id @default(autoincrement())
+  name                String               @unique
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  auditRetentionDays  Int                  @default(365)
+  demoExpiryDate      DateTime?
+  demoStartedAt       DateTime?
+  isDemoAccount       Boolean              @default(false)
+  package             CustomerPackage      @default(FOUNDATION)
+  accounts            Account[]
+  advances            Advance[]
+  attendances         Attendance[]
+  audits              Audit[]
+  categories          Category[]
+  employees           Employee[]
+  grns                GoodsReceivedNote[]
+  items               Item[]
+  partnerBillPayments PartnerBillPayment[]
+  partnerBills        PartnerBill[]
+  partners            Partner[]
+  payrolls            Payroll[]
+  purchaseOrderAudits PurchaseOrderAudit[]
+  purchaseOrders      PurchaseOrder[]
+  sites               Site[]
+  suppliers           Supplier[]
+  transactions        Transaction[]
+  users               User[]
 
   @@map("companies")
 }
@@ -59,49 +59,49 @@ model Site {
 }
 
 model User {
-  id           Int           @id @default(autoincrement())
-  email        String?       @unique
-  name         String?
-  password     String?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  loginTime    DateTime?     // Last login time for audit
-  logoutTime   DateTime?     // Last logout time for audit
-  role         UserRole      @default(GUEST)
-  status       String        @default("Active") // User account status: Active/Inactive/Suspended
-  siteId       Int?
-  companyId    Int
-  transactions Transaction[]
-  purchaseOrdersCreated PurchaseOrder[] @relation("POCreatedBy")
-  auditLogs    PurchaseOrderAudit[]
-  audits       Audit[]
-  company      Company       @relation(fields: [companyId], references: [id])
-  site         Site?         @relation(fields: [siteId], references: [id])
+  id                    Int                  @id @default(autoincrement())
+  email                 String?              @unique
+  name                  String?
+  password              String?
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+  logoutTime            DateTime?
+  role                  UserRole             @default(GUEST)
+  siteId                Int?
+  companyId             Int
+  status                String               @default("Active")
+  loginTime             DateTime?
+  audits                Audit[]
+  auditLogs             PurchaseOrderAudit[]
+  purchaseOrdersCreated PurchaseOrder[]      @relation("POCreatedBy")
+  transactions          Transaction[]
+  company               Company              @relation(fields: [companyId], references: [id])
+  site                  Site?                @relation(fields: [siteId], references: [id])
 
   @@index([companyId])
   @@map("users")
 }
 
 model Account {
-  id           Int           @id @default(autoincrement())
-  name         String
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  budget       Float         @default(0)
-  type         String        @default("General")
-  address      String?
-  city         String?
-  state        String?
-  zip          String?
-  siteId       Int?
-  endDate      DateTime?
-  startDate    DateTime?
-  projectStatus String?      @default("Yet to start") // Account status: Yet to start, In-progress, Completed
-  companyId    Int
-  company      Company       @relation(fields: [companyId], references: [id])
-  site         Site?         @relation(fields: [siteId], references: [id])
-  transactions Transaction[]
-  partnerBills PartnerBill[]
+  id            Int           @id @default(autoincrement())
+  name          String
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  budget        Float         @default(0)
+  type          String        @default("General")
+  siteId        Int?
+  endDate       DateTime?
+  startDate     DateTime?
+  companyId     Int
+  projectStatus String?       @default("Yet to start")
+  address       String?
+  city          String?
+  state         String?
+  zip           String?
+  company       Company       @relation(fields: [companyId], references: [id])
+  site          Site?         @relation(fields: [siteId], references: [id])
+  partnerBills  PartnerBill[]
+  transactions  Transaction[]
 
   @@index([companyId])
   @@map("accounts")
@@ -137,12 +137,12 @@ model Transaction {
   createdBy     Int?
   companyId     Int
   siteId        Int?
+  advances      Advance[]
   account       Account   @relation(fields: [accountId], references: [id])
   categoryRef   Category? @relation(fields: [categoryId], references: [id])
   company       Company   @relation(fields: [companyId], references: [id])
   createdByUser User?     @relation(fields: [createdBy], references: [id])
   site          Site?     @relation(fields: [siteId], references: [id])
-  advances      Advance[]
 
   @@index([companyId])
   @@index([siteId])
@@ -150,28 +150,27 @@ model Transaction {
 }
 
 model Employee {
-  id                Int              @id @default(autoincrement())
-  name              String
-  partnerType       String           @default("Employee")  // Employee, Supplier, Contractor
-  etype             String?          // Designation
-  email             String?
-  phone             String?
-  address           String?
-  salary            Float?
-  salaryFrequency   String           @default("Monthly")  // Daily or Monthly
-  // Partner/Supplier fields
-  gstNumber         String?
-  creditPeriodDays  Int              @default(30)
-  isActive          Boolean          @default(true)
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
-  status            String           @default("Active")
-  companyId         Int
-  advances          Advance[]
-  attendances       Attendance[]
-  company           Company          @relation(fields: [companyId], references: [id])
-  payrolls          Payroll[]
-  partnerBills      PartnerBill[]
+  id               Int           @id @default(autoincrement())
+  name             String
+  etype            String?
+  salary           Float?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  status           String        @default("Active")
+  companyId        Int
+  address          String?
+  creditPeriodDays Int           @default(30)
+  email            String?
+  gstNumber        String?
+  isActive         Boolean       @default(true)
+  partnerType      String        @default("Employee")
+  phone            String?
+  salaryFrequency  String        @default("Monthly")
+  advances         Advance[]
+  attendances      Attendance[]
+  company          Company       @relation(fields: [companyId], references: [id])
+  partnerBills     PartnerBill[]
+  payrolls         Payroll[]
 
   @@map("employees")
 }
@@ -215,10 +214,10 @@ model Advance {
   updatedAt     DateTime     @updatedAt
   employeeId    Int
   companyId     Int
-  transactionId Int?         // Link to transaction (Salary Advance, Salary)
+  transactionId Int?
   company       Company      @relation(fields: [companyId], references: [id])
   employee      Employee     @relation(fields: [employeeId], references: [id])
-  transaction   Transaction? @relation(fields: [transactionId], references: [id], onDelete: SetNull)
+  transaction   Transaction? @relation(fields: [transactionId], references: [id])
 
   @@index([companyId])
   @@index([employeeId])
@@ -226,95 +225,79 @@ model Advance {
   @@map("advances")
 }
 
-// ==================== INVENTORY MODULE ====================
 model Supplier {
-  id               Int               @id @default(autoincrement())
-  name             String
-  email            String?
-  phone            String?
-  address          String?
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  companyId        Int
-  company          Company           @relation(fields: [companyId], references: [id])
-  items            Item[]
-  purchaseOrders   PurchaseOrder[]
+  id             Int             @id @default(autoincrement())
+  name           String
+  email          String?
+  phone          String?
+  address        String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  companyId      Int
+  purchaseOrders PurchaseOrder[]
+  company        Company         @relation(fields: [companyId], references: [id])
+  items          Item[]          @relation("ItemToSupplier")
 
   @@index([companyId])
   @@map("suppliers")
 }
 
 model Item {
-  id             Int      @id @default(autoincrement())
-  name           String
-  description    String?
-  category       String?
-  unit           String   @default("Bag")
-  openingStock   Float    @default(0)
-  currentStock   Float    @default(0)
-  reorderLevel   Float?
-  defaultRate    Float?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  companyId      Int
-  company        Company  @relation(fields: [companyId], references: [id])
-  suppliers      Supplier[]
+  id           Int        @id @default(autoincrement())
+  name         String
+  description  String?
+  category     String?
+  unit         String     @default("Bag")
+  openingStock Float      @default(0)
+  currentStock Float      @default(0)
+  reorderLevel Float?
+  defaultRate  Float?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  companyId    Int
+  company      Company    @relation(fields: [companyId], references: [id])
+  suppliers    Supplier[] @relation("ItemToSupplier")
 
   @@index([companyId])
   @@map("items")
 }
 
-// ==================== PURCHASE ORDER MODULE ====================
-
 model PurchaseOrder {
-  id                Int                    @id @default(autoincrement())
-  poNumber          String                 @unique
-  date              DateTime               @default(now())
-  status            String                 @default("DRAFT") // DRAFT, PENDING, APPROVED, RECEIVED, CANCELLED
-  supplierId        Int
-  supplier          Supplier               @relation(fields: [supplierId], references: [id])
-  
-  // Vendor details (from supplier)
-  vendorName        String
-  vendorContact     String?
-  vendorAddress     String?
-  vendorPhone       String?
-  
-  // Ship to details
-  shipToName        String
-  shipToAddress     String?
-  shipToCity        String?
-  shipToState       String?
-  shipToZip         String?
-  
-  // Additional info
-  requisitioner     String?
-  shipVia           String?
-  fob               String?
-  shippingTerms     String?
-  comments          String?
-  
-  // Financial summary
-  subtotal          Float                  @default(0)
-  taxAmount         Float                  @default(0)
-  shippingAmount    Float                  @default(0)
-  otherAmount       Float                  @default(0)
-  totalAmount       Float                  @default(0)
-  
-  // Audit tracking
-  createdById       Int
-  createdByUser     User                   @relation("POCreatedBy", fields: [createdById], references: [id])
-  
-  // Relationships
-  items             PurchaseOrderItem[]
-  grns              GoodsReceivedNote[]
-  auditLogs         PurchaseOrderAudit[]
-  companyId         Int
-  company           Company                @relation(fields: [companyId], references: [id])
-  
-  createdAt         DateTime               @default(now())
-  updatedAt         DateTime               @updatedAt
-  
+  id             Int                  @id @default(autoincrement())
+  poNumber       String               @unique
+  date           DateTime             @default(now())
+  status         String               @default("DRAFT")
+  supplierId     Int
+  vendorName     String
+  vendorContact  String?
+  vendorAddress  String?
+  vendorPhone    String?
+  shipToName     String
+  shipToAddress  String?
+  shipToCity     String?
+  shipToState    String?
+  shipToZip      String?
+  requisitioner  String?
+  shipVia        String?
+  fob            String?
+  shippingTerms  String?
+  comments       String?
+  subtotal       Float                @default(0)
+  taxAmount      Float                @default(0)
+  shippingAmount Float                @default(0)
+  otherAmount    Float                @default(0)
+  totalAmount    Float                @default(0)
+  createdById    Int
+  companyId      Int
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  grns           GoodsReceivedNote[]
+  auditLogs      PurchaseOrderAudit[]
+  items          PurchaseOrderItem[]
+  company        Company              @relation(fields: [companyId], references: [id])
+  createdByUser  User                 @relation("POCreatedBy", fields: [createdById], references: [id])
+  supplier       Supplier             @relation(fields: [supplierId], references: [id])
+
   @@index([supplierId])
   @@index([companyId])
   @@index([createdById])
@@ -322,47 +305,40 @@ model PurchaseOrder {
 }
 
 model PurchaseOrderItem {
-  id                Int                    @id @default(autoincrement())
-  poId              Int
-  purchaseOrder     PurchaseOrder          @relation(fields: [poId], references: [id], onDelete: Cascade)
-  
-  itemCode          String?
-  description       String
-  quantity          Float
-  unitOfMeasure     String?                @default("Pcs") // Pcs, Kg, Ltr, Box, etc.
-  specification     String?
-  unitPrice         Float
-  totalPrice        Float
-  remarks           String?
-  
-  grnItems          GoodsReceivedNoteItem[]
-  
-  createdAt         DateTime               @default(now())
-  updatedAt         DateTime               @updatedAt
-  
+  id            Int                     @id @default(autoincrement())
+  poId          Int
+  itemCode      String?
+  description   String
+  quantity      Float
+  unitOfMeasure String?                 @default("Pcs")
+  specification String?
+  unitPrice     Float
+  totalPrice    Float
+  remarks       String?
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+  grnItems      GoodsReceivedNoteItem[]
+  purchaseOrder PurchaseOrder           @relation(fields: [poId], references: [id], onDelete: Cascade)
+
   @@index([poId])
   @@map("purchase_order_items")
 }
 
 model PurchaseOrderAudit {
-  id                Int                    @id @default(autoincrement())
-  poId              Int
-  purchaseOrder     PurchaseOrder          @relation(fields: [poId], references: [id], onDelete: Cascade)
-  
-  userId            Int
-  user              User                   @relation(fields: [userId], references: [id])
-  
-  action            String                 // Created, StatusChanged, ItemAdded, ItemDeleted, FieldEdited
-  fieldChanged      String?                // Which field was changed (status, vendorName, etc.)
-  oldValue          String?                // Previous value
-  newValue          String?                // New value
-  description       String                 // Human-readable description
-  
-  companyId         Int
-  company           Company                @relation(fields: [companyId], references: [id])
-  
-  createdAt         DateTime               @default(now())
-  
+  id            Int           @id @default(autoincrement())
+  poId          Int
+  userId        Int
+  action        String
+  fieldChanged  String?
+  oldValue      String?
+  newValue      String?
+  description   String
+  companyId     Int
+  createdAt     DateTime      @default(now())
+  company       Company       @relation(fields: [companyId], references: [id])
+  purchaseOrder PurchaseOrder @relation(fields: [poId], references: [id], onDelete: Cascade)
+  user          User          @relation(fields: [userId], references: [id])
+
   @@index([poId])
   @@index([userId])
   @@index([companyId])
@@ -370,123 +346,95 @@ model PurchaseOrderAudit {
   @@map("purchase_order_audits")
 }
 
-// ==================== GRN (GOODS RECEIVED NOTES) MODULE ====================
-
 model GoodsReceivedNote {
   id                  Int                     @id @default(autoincrement())
   grnNumber           String                  @unique
   poId                Int
-  purchaseOrder       PurchaseOrder           @relation(fields: [poId], references: [id])
-  
-  status              String                  @default("DRAFT")    // DRAFT, RECEIVED, VERIFIED, REJECTED
+  status              String                  @default("DRAFT")
   receivedDate        DateTime                @default(now())
-  
-  // Warehouse info
   warehouseLocation   String?
   receivedBy          String?
   verifiedBy          String?
-  
-  // Delivery info
   transporterName     String?
   trackingNumber      String?
   deliveryNotes       String?
-  
-  // Financial summary
   totalReceivedAmount Float                   @default(0)
   discrepancies       String?
-  
-  // Relationships
-  items               GoodsReceivedNoteItem[]
   companyId           Int
-  company             Company                 @relation(fields: [companyId], references: [id])
-  
   createdAt           DateTime                @default(now())
   updatedAt           DateTime                @updatedAt
-  
+  items               GoodsReceivedNoteItem[]
+  company             Company                 @relation(fields: [companyId], references: [id])
+  purchaseOrder       PurchaseOrder           @relation(fields: [poId], references: [id])
+
   @@index([poId])
   @@index([companyId])
   @@map("goods_received_notes")
 }
 
 model GoodsReceivedNoteItem {
-  id                          Int                     @id @default(autoincrement())
-  grnId                       Int
-  grn                         GoodsReceivedNote       @relation(fields: [grnId], references: [id], onDelete: Cascade)
-  
-  poItemId                    Int
-  poItem                      PurchaseOrderItem       @relation(fields: [poItemId], references: [id])
-  
-  // Receipt details
-  quantityOrdered             Float
-  quantityReceived            Float
-  quantityRejected            Float                   @default(0)
-  quantityAccepted            Float
-  
-  // Item info (snapshot)
-  description                 String
-  unitPrice                   Float
-  receivedAmount              Float
-  
-  // QC Details
-  batchNumber                 String?
-  expiryDate                  DateTime?
-  condition                   String?                 // Good, Damaged, Expired
-  qcNotes                     String?
-  
-  createdAt                   DateTime                @default(now())
-  updatedAt                   DateTime                @updatedAt
-  
+  id               Int               @id @default(autoincrement())
+  grnId            Int
+  poItemId         Int
+  quantityOrdered  Float
+  quantityReceived Float
+  quantityRejected Float             @default(0)
+  quantityAccepted Float
+  description      String
+  unitPrice        Float
+  receivedAmount   Float
+  batchNumber      String?
+  expiryDate       DateTime?
+  condition        String?
+  qcNotes          String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  grn              GoodsReceivedNote @relation(fields: [grnId], references: [id], onDelete: Cascade)
+  poItem           PurchaseOrderItem @relation(fields: [poItemId], references: [id])
+
   @@index([grnId])
   @@index([poItemId])
   @@map("goods_received_note_items")
 }
 
-// ==================== END GRN MODULE ====================
-
-// ==================== PARTNER MODULE ====================
-
 model Partner {
-  id                  Int                   @id @default(autoincrement())
-  name                String
-  email               String?
-  phone               String?
-  address             String?
-  partnerType         String                // e.g., "Vendor", "Contractor", "Supplier"
-  gstNumber           String?
-  creditPeriodDays    Int                   @default(30)
-  isActive            Boolean               @default(true)
-  createdAt           DateTime              @default(now())
-  updatedAt           DateTime              @updatedAt
-  companyId           Int
-  company             Company               @relation(fields: [companyId], references: [id])
+  id               Int      @id @default(autoincrement())
+  name             String
+  email            String?
+  phone            String?
+  address          String?
+  partnerType      String
+  gstNumber        String?
+  creditPeriodDays Int      @default(30)
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  companyId        Int
+  company          Company  @relation(fields: [companyId], references: [id])
 
   @@index([companyId])
   @@map("partners")
 }
 
-// ==================== END PARTNER MODULE ====================
-
-// ==================== PARTNER BILLS MODULE ====================
-
 model PartnerBill {
-  id                  Int                   @id @default(autoincrement())
-  companyId           Int
-  employeeId          Int
-  accountId           Int
-  invoiceNo           String
-  billDate            DateTime
-  dueDate             DateTime?
-  amount              Float
-  paidAmount          Float                 @default(0)
-  status              BillStatus            @default(UNPAID)
-  billImagePath       String?
-  remarks             String?
-  createdAt           DateTime              @default(now())
-  updatedAt           DateTime              @updatedAt
-  company             Company               @relation(fields: [companyId], references: [id])
-  employee            Employee              @relation(fields: [employeeId], references: [id])
-  account             Account               @relation(fields: [accountId], references: [id])
-  payments            PartnerBillPayment[]
+  id            Int                  @id @default(autoincrement())
+  companyId     Int
+  employeeId    Int
+  accountId     Int
+  invoiceNo     String
+  billDate      DateTime
+  dueDate       DateTime?
+  amount        Float
+  paidAmount    Float                @default(0)
+  status        BillStatus           @default(UNPAID)
+  billImagePath String?
+  remarks       String?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  payments      PartnerBillPayment[]
+  account       Account              @relation(fields: [accountId], references: [id])
+  company       Company              @relation(fields: [companyId], references: [id])
+  employee      Employee             @relation(fields: [employeeId], references: [id])
 
   @@unique([companyId, employeeId, invoiceNo])
   @@index([companyId])
@@ -497,43 +445,38 @@ model PartnerBill {
 }
 
 model PartnerBillPayment {
-  id                  Int                   @id @default(autoincrement())
-  companyId           Int
-  billId              Int
-  paymentDate         DateTime
-  amount              Float
-  paymentMode         PaymentMode           @default(GPAY)
-  referenceNo         String?
-  transactionId       Int?
-  createdAt           DateTime              @default(now())
-  company             Company               @relation(fields: [companyId], references: [id])
-  bill                PartnerBill           @relation(fields: [billId], references: [id], onDelete: Cascade)
+  id            Int         @id @default(autoincrement())
+  companyId     Int
+  billId        Int
+  paymentDate   DateTime
+  amount        Float
+  paymentMode   PaymentMode @default(GPAY)
+  referenceNo   String?
+  transactionId Int?
+  createdAt     DateTime    @default(now())
+  bill          PartnerBill @relation(fields: [billId], references: [id], onDelete: Cascade)
+  company       Company     @relation(fields: [companyId], references: [id])
 
   @@index([companyId])
   @@index([billId])
   @@map("partner_bill_payments")
 }
 
-// ==================== END PARTNER BILLS MODULE ====================
-
-// ==================== AUDIT TRAIL MODULE ====================
-
 model Audit {
-  id            Int       @id @default(autoincrement())
-  companyId     Int
-  module        String    // "LOGIN", "TRANSACTION", "CATEGORY", "EMPLOYEE", "BILL"
-  action        String    // "CREATE", "UPDATE", "DELETE", "LOGIN", "LOGOUT"
-  recordId      Int?      // ID of the audited record (null for LOGIN/LOGOUT)
-  userId        Int
-  beforeData    Json?     // Old state of the record (null on CREATE)
-  afterData     Json?     // New state of the record (null on DELETE)
-  description   String    // Human-readable description
-  ipAddress     String?   // IP address of the requester
-  userAgent     String?   // Browser/client info
-  timestamp     DateTime  @default(now())
-  
-  company       Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  user          User      @relation(fields: [userId], references: [id])
+  id          Int      @id @default(autoincrement())
+  companyId   Int
+  module      String
+  action      String
+  recordId    Int?
+  userId      Int
+  beforeData  Json?
+  afterData   Json?
+  description String
+  ipAddress   String?
+  userAgent   String?
+  timestamp   DateTime @default(now())
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id])
 
   @@index([companyId])
   @@index([module])
@@ -543,8 +486,6 @@ model Audit {
   @@index([timestamp])
   @@map("audits")
 }
-
-// ==================== END AUDIT TRAIL MODULE ====================
 
 enum UserRole {
   OWNER
@@ -570,8 +511,8 @@ enum PaymentMode {
 }
 
 enum CustomerPackage {
-  DEMO
   FOUNDATION
   STRUCTURE
   LANDMARK
+  DEMO
 }
