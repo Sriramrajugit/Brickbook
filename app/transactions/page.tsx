@@ -65,6 +65,7 @@ export default function Transactions() {
 
   // Accounts and Categories from DB
   const [accounts, setAccounts] = useState<Account[]>([]);
+  const [accountsLoading, setAccountsLoading] = useState(true);
   const [categories, setCategories] = useState<Category[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
 
@@ -93,15 +94,19 @@ export default function Transactions() {
   useEffect(() => {
     const fetchAccounts = async () => {
       try {
+        setAccountsLoading(true);
         // /api/accounts returns ONLY id and name (restricted for security)
         const res = await fetch('/api/accounts');
+        console.log('📋 Accounts response status:', res.status);
         if (!res.ok) {
           const errorData = await res.json();
+          console.error('❌ Accounts API error:', errorData);
           throw new Error(`Failed to fetch accounts: ${res.status} ${errorData?.error}`);
         }
         const response = await res.json();
         // /api/accounts returns { data: [...], pagination: {...} }
         const accountsList = response.data || response;
+        console.log('📋 Accounts loaded:', accountsList);
         setAccounts(accountsList);
         // Set first account as default
         if (Array.isArray(accountsList) && accountsList.length > 0) {
@@ -109,6 +114,8 @@ export default function Transactions() {
         }
       } catch (err) {
         console.error('❌ Error loading accounts:', err);
+      } finally {
+        setAccountsLoading(false);
       }
     };
 
@@ -449,6 +456,8 @@ export default function Transactions() {
         date: data.date as string,
         accountId: Number(data.accountId as string),
       };
+
+      console.log('📤 Sending transaction data:', bodyData);
       
       // POST or PUT to API to save to database
       const res = await fetch(url, {
@@ -637,11 +646,24 @@ export default function Transactions() {
               )}
 
               {/* Add Transaction - Only for OWNER and SITE_MANAGER */}
-              {canEdit() && accounts.length > 0 && categories.length > 0 && (
+              {canEdit() && (
               <div className="bg-white p-6 rounded-lg shadow mb-6">
                 <h3 className="text-lg font-medium text-gray-900 mb-4">
                   {isEditMode ? 'Edit Transaction' : 'Add New Entry'}
                 </h3>
+                
+                {accountsLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="text-center">
+                      <div className="inline-block animate-spin">
+                        <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                      </div>
+                      <p className="text-gray-600 mt-2">Loading form...</p>
+                    </div>
+                  </div>
+                ) : (
                 <form
                   onSubmit={handleSubmit}
                   className="grid grid-cols-1 md:grid-cols-2 gap-4"
@@ -720,7 +742,7 @@ export default function Transactions() {
                             .filter((emp) => {
                               // Filter based on selected category
                               if (selectedCategory === 'Salary' || selectedCategory === 'Salary Advance') {
-                                return emp.partnerType === 'Employee';
+                                return emp.partnerType === 'Employee' && emp.status === 'Active';
                               }
                               if (selectedCategory === 'To Contractor') {
                                 return emp.partnerType === 'Supplier' || emp.partnerType === 'Contractor';
@@ -801,26 +823,22 @@ export default function Transactions() {
                     <label className="block text-sm font-medium text-gray-700">
                       Account <span className="text-red-500">*</span>
                     </label>
-                    {accounts.length === 0 ? (
-                      <div className="mt-1 w-full p-3 border border-red-300 rounded-md bg-red-50 text-red-700">
-                        ⚠️ No accounts available. Please create an account first.
-                      </div>
-                    ) : (
-                      <select
-                        name="accountId"
-                        value={selectedAccount}
-                        onChange={(e) => setSelectedAccount(e.target.value)}
-                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
-                        required
-                      >
-                        <option value="">Select Account</option>
-                        {accounts.map(acc => (
-                          <option key={acc.id} value={acc.id.toString()}>
+                    <select
+                      name="accountId"
+                      value={selectedAccount}
+                      onChange={(e) => setSelectedAccount(e.target.value)}
+                      className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+                      required
+                    >
+                      <option value="">Select Account</option>
+                      {accounts
+                        .filter((acc) => acc.projectStatus !== 'Completed')
+                        .map(acc => (
+                          <option key={acc.id} value={acc.id}>
                             {acc.name}
                           </option>
                         ))}
-                      </select>
-                    )}
+                    </select>
                   </div>
 
                   <div className="md:col-span-2">
@@ -843,6 +861,7 @@ export default function Transactions() {
                     </div>
                   </div>
                 </form>
+                )}
               </div>
               )}
 

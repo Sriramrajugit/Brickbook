@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
+import { calculateDemoExpiry } from '@/lib/demoAccess'
 
 // Handle CORS preflight requests
 export async function OPTIONS(request: NextRequest) {
@@ -47,6 +48,9 @@ export async function GET(request: NextRequest) {
           name: true,
           createdAt: true,
           package: true,
+          isDemoAccount: true,
+          demoStartedAt: true,
+          demoExpiryDate: true,
           _count: {
             select: {
               users: true,
@@ -67,9 +71,11 @@ export async function GET(request: NextRequest) {
       pagination: { page, limit, total, totalPages },
     })
   } catch (error) {
-    console.error('Error fetching companies:', error)
+    console.error('❌ Error fetching companies:', error)
+    const errorMsg = error instanceof Error ? error.message : String(error)
+    console.error('📋 Full error:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch companies' },
+      { error: `Failed to fetch companies: ${errorMsg}` },
       { status: 500 }
     )
   }
@@ -90,7 +96,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized - Only Brickbook.in Admin can access' }, { status: 403 })
     }
 
-    const { companyName, ownerEmail, ownerName, ownerPassword, mainAccountBudget, selectedPackage } = await request.json()
+    const { companyName, ownerEmail, ownerName, ownerPassword, mainAccountBudget, selectedPackage, isDemo } = await request.json()
 
     // Validate input
     if (!companyName || !ownerEmail || !ownerName || !ownerPassword) {
@@ -100,9 +106,25 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate package selection
+    // Validate package selection and demo flag
     const validPackages = ['FOUNDATION', 'STRUCTURE', 'LANDMARK']
-    const packageToUse = selectedPackage && validPackages.includes(selectedPackage) ? selectedPackage : 'FOUNDATION'
+    
+    let packageToUse = 'FOUNDATION'
+    let isDemoAccount = false
+    let demoStartedAt = null
+    let demoExpiryDate = null
+    
+    if (isDemo === true) {
+      // Demo account - use DEMO package
+      packageToUse = 'DEMO'
+      isDemoAccount = true
+      demoStartedAt = new Date()
+      demoExpiryDate = calculateDemoExpiry(30) // 30 days from now
+    } else if (selectedPackage && validPackages.includes(selectedPackage)) {
+      // Paid account - use selected package
+      packageToUse = selectedPackage
+      isDemoAccount = false
+    }
 
     // Check if company name already exists
     const existingCompany = await prisma.company.findUnique({
@@ -135,6 +157,9 @@ export async function POST(request: NextRequest) {
         data: { 
           name: companyName,
           package: packageToUse as any,
+          isDemoAccount: isDemoAccount,
+          demoStartedAt: demoStartedAt,
+          demoExpiryDate: demoExpiryDate,
         },
       })
 
@@ -208,6 +233,10 @@ export async function POST(request: NextRequest) {
         data: {
           companyId: result.company.id,
           companyName: result.company.name,
+          accessLevel: result.company.package,
+          isDemoAccount: result.company.isDemoAccount,
+          demoStartedAt: result.company.demoStartedAt,
+          demoExpiryDate: result.company.demoExpiryDate,
           ownerId: result.owner.id,
           ownerEmail: result.owner.email,
           siteId: result.site.id,
@@ -217,9 +246,10 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     )
   } catch (error) {
-    console.error('Error onboarding customer:', error)
+    console.error('❌ Error onboarding customer:', error)
+    const errorMsg = error instanceof Error ? error.message : String(error)
     return NextResponse.json(
-      { error: 'Failed to onboard customer' },
+      { error: `Failed to onboard customer: ${errorMsg}` },
       { status: 500 }
     )
   }

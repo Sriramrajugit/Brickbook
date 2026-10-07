@@ -16,6 +16,9 @@ model Company {
   updatedAt             DateTime                 @updatedAt
   auditRetentionDays    Int                      @default(365)  // Configurable retention (1 year default)
   package               CustomerPackage         @default(FOUNDATION)
+  isDemoAccount         Boolean                  @default(false)
+  demoStartedAt         DateTime?
+  demoExpiryDate        DateTime?
   accounts              Account[]
   advances              Advance[]
   attendances           Attendance[]
@@ -567,6 +570,7 @@ enum PaymentMode {
 }
 
 enum CustomerPackage {
+  DEMO
   FOUNDATION
   STRUCTURE
   LANDMARK

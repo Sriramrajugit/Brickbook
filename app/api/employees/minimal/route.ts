@@ -17,10 +17,12 @@ export async function GET(request: NextRequest) {
       where: { companyId },
       // Select ONLY necessary fields - NO dates, NO salary data
       // Include partnerType for category-based filtering
+      // Include status for Active/Inactive filtering
       select: {
         id: true,
         name: true,
         partnerType: true,
+        status: true,
       },
       orderBy: { name: 'asc' }
     })

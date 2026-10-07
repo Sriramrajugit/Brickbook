@@ -27,6 +27,7 @@ interface OnboardingFormData {
   ownerPassword: string
   mainAccountBudget: string
   selectedPackage: 'FOUNDATION' | 'STRUCTURE' | 'LANDMARK'
+  isDemo: boolean
 }
 
 export default function AdminPanel() {
@@ -48,6 +49,7 @@ export default function AdminPanel() {
     ownerPassword: '',
     mainAccountBudget: '100000',
     selectedPackage: 'FOUNDATION',
+    isDemo: false,
   })
   const [submitting, setSubmitting] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null)
@@ -64,7 +66,7 @@ export default function AdminPanel() {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch(`/api/admin/companies?page=${page}&limit=10`)
+      const res = await fetch(`/api/admin/companies?page=${page}&limit=10`, { credentials: 'include' })
       if (res.ok) {
         const result = await res.json()
         setCompanies(result.data || [])
@@ -111,12 +113,14 @@ export default function AdminPanel() {
           ownerPassword: formData.ownerPassword,
           mainAccountBudget: parseInt(formData.mainAccountBudget),
           selectedPackage: formData.selectedPackage,
+          isDemo: formData.isDemo,
         }),
       })
 
       if (res.ok) {
         const result = await res.json()
-        setSuccessMessage(`Customer "${formData.companyName}" onboarded successfully with ${formData.selectedPackage} package!`)
+        const packageType = formData.isDemo ? 'Demo (30-day trial)' : formData.selectedPackage + ' package'
+        setSuccessMessage(`Customer "${formData.companyName}" onboarded successfully with ${packageType}!`)
         setFormData({
           companyName: '',
           ownerEmail: '',
@@ -124,6 +128,7 @@ export default function AdminPanel() {
           ownerPassword: '',
           mainAccountBudget: '100000',
           selectedPackage: 'FOUNDATION',
+          isDemo: false,
         })
         setShowOnboardingForm(false)
         // Refresh company list
@@ -306,6 +311,37 @@ export default function AdminPanel() {
                   </div>
                 </div>
 
+                {/* Access Type Selection */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    Account Type
+                  </label>
+                  <div className="flex gap-6">
+                    <label className="flex items-center cursor-pointer">
+                      <input
+                        type="radio"
+                        name="accessType"
+                        checked={!formData.isDemo}
+                        onChange={() => setFormData({ ...formData, isDemo: false })}
+                        className="w-4 h-4 text-blue-600 cursor-pointer"
+                      />
+                      <span className="ml-2 text-sm text-gray-700">Paid Account</span>
+                    </label>
+                    <label className="flex items-center cursor-pointer">
+                      <input
+                        type="radio"
+                        name="accessType"
+                        checked={formData.isDemo}
+                        onChange={() => setFormData({ ...formData, isDemo: true })}
+                        className="w-4 h-4 text-green-600 cursor-pointer"
+                      />
+                      <span className="ml-2 text-sm text-gray-700">Demo – 30 Days</span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Package Selection (only for paid) */}
+                {!formData.isDemo && (
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Select Package
@@ -332,6 +368,16 @@ export default function AdminPanel() {
                     <strong>Landmark:</strong> Everything in Structure + BOQ and upcoming modules
                   </p>
                 </div>
+                )}
+
+                {/* Demo Info */}
+                {formData.isDemo && (
+                <div className="md:col-span-2 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <p className="text-sm text-blue-700">
+                    <strong>Demo Account:</strong> Valid for 30 days from account creation. After expiry, user can login but all menus will be disabled. Only logout and upgrade options will be available.
+                  </p>
+                </div>
+                )}
               </div>
 
               <div className="flex gap-4 mt-6">

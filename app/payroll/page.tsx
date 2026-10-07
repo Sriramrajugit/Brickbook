@@ -45,7 +45,7 @@ export default function Payroll() {
   useEffect(() => {
     const fetchAccounts = async () => {
       try {
-        const res = await fetch('/api/accounts/full');
+        const res = await fetch('/api/accounts/full', { credentials: 'include' });
         if (res.ok) {
           const response = await res.json();
           // /api/accounts/full returns { data: [...], pagination: {...} }
@@ -170,7 +170,7 @@ export default function Payroll() {
           fromDate: startDate,
           toDate: endDate,
         });
-        const res = await fetch(`/api/payroll?${params.toString()}`);
+        const res = await fetch(`/api/payroll?${params.toString()}`, { credentials: 'include' });
         if (!res.ok) {
           const errData = await res.json();
           throw new Error(errData.details || errData.error || 'Failed to fetch payroll preview');
@@ -186,7 +186,7 @@ export default function Payroll() {
         }
         
         // Fetch which employees already have payroll for this period
-        const paidRes = await fetch(`/api/payroll/paid?fromDate=${startDate}&toDate=${endDate}`);
+        const paidRes = await fetch(`/api/payroll/paid?fromDate=${startDate}&toDate=${endDate}`, { credentials: 'include' });
         if (paidRes.ok) {
           const paidData = await paidRes.json();
           const paidIds = new Set<number>(paidData.map((p: any) => p.employeeId));

@@ -38,6 +38,7 @@ export default function Employees() {
   const [employees, setEmployees] = useState<Employee[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [formError, setFormError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null)
   const [sortBy, setSortBy] = useState<'name' | 'partnerType'>('name')
@@ -121,6 +122,22 @@ export default function Employees() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setFormError('')
+    setError('')
+
+    // Validation: If partner type is Employee, Salary is mandatory and cannot be 0
+    if (formData.partnerType === 'Employee') {
+      if (!formData.salary || formData.salary.trim() === '') {
+        setFormError('Salary is mandatory for Employee type')
+        return
+      }
+      const salaryValue = parseFloat(formData.salary)
+      if (isNaN(salaryValue) || salaryValue <= 0) {
+        setFormError('Salary must be greater than 0 for Employee type')
+        return
+      }
+    }
+
     const data = {
       ...formData,
       salary: formData.salary ? parseFloat(formData.salary) : null,
@@ -196,6 +213,7 @@ export default function Employees() {
       salaryFrequency: 'Monthly', 
       status: 'Active' 
     })
+    setFormError('')
     setEditingEmployee(null)
   }
 
@@ -288,9 +306,26 @@ export default function Employees() {
                 <h3 className="text-lg font-medium text-gray-900 mb-4">
                   {editingEmployee ? 'Edit Partner' : 'Add New Partner'}
                 </h3>
+
+                {/* Form Error Message */}
+                {formError && (
+                  <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-4">
+                    <div className="flex">
+                      <div className="flex-shrink-0">
+                        <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <p className="text-sm text-red-700">{formError}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Name</label>
+                    <label className="block text-sm font-medium text-gray-700">Name <span className="text-red-500">*</span></label>
                     <input
                       type="text"
                       value={formData.name}
@@ -399,13 +434,15 @@ export default function Employees() {
                   )}
                   {formData.partnerType === 'Employee' && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">Salary</label>
+                      <label className="block text-sm font-medium text-gray-700">Salary <span className="text-red-500">*</span></label>
                       <input
                         type="number"
                         step="0.01"
+                        min="0.01"
                         value={formData.salary}
                         onChange={(e) => setFormData({ ...formData, salary: e.target.value })}
                         className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                        required
                       />
                     </div>
                   )}

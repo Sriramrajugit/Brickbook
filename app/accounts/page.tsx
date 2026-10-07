@@ -26,6 +26,7 @@ export default function Accounts() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
+  const [formError, setFormError] = useState('')
   const [formData, setFormData] = useState({
     name: '',
     type: '',
@@ -61,6 +62,38 @@ export default function Accounts() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setFormError('')
+    
+    // Validation 1: Account Name
+    if (!formData.name.trim()) {
+      setFormError('Account Name is required')
+      return
+    }
+    if (formData.name.length > 100) {
+      setFormError('Account Name must not exceed 100 characters')
+      return
+    }
+    
+    // Validation 2: Account Type
+    if (!formData.type.trim()) {
+      setFormError('Account Type is required')
+      return
+    }
+    if (formData.type.length > 50) {
+      setFormError('Account Type must not exceed 50 characters')
+      return
+    }
+    
+    // Validation 3: Budget
+    if (!formData.budget) {
+      setFormError('Budget Planned is required')
+      return
+    }
+    const budgetValue = parseFloat(formData.budget)
+    if (isNaN(budgetValue) || budgetValue < 0) {
+      setFormError('Budget Planned must be a positive number')
+      return
+    }
     
     // Validate: End date cannot be earlier than start date
     if (formData.startDate && formData.endDate) {
@@ -68,7 +101,7 @@ export default function Accounts() {
       const endDate = new Date(formData.endDate);
       
       if (endDate < startDate) {
-        alert('End date cannot be earlier than start date');
+        setFormError('End date cannot be earlier than start date');
         return;
       }
     }
@@ -129,6 +162,7 @@ export default function Accounts() {
     setFormData({ name: '', type: '', budget: '', address: '', startDate: '', endDate: '', projectStatus: 'Yet to start' })
     setEditingId(null)
     setShowForm(false)
+    setFormError('')
   }
 
   const handleDelete = async (id: number) => {
@@ -194,15 +228,24 @@ export default function Accounts() {
                   <h3 className="text-lg font-medium text-gray-900 mb-4">
                     {editingId ? '✏️ Edit Account' : '➕ Add New Account'}
                   </h3>
+                  
+                  {formError && (
+                    <div className="mb-4 p-3 bg-red-50 border border-red-300 rounded-lg text-red-700 text-sm">
+                      ❌ {formError}
+                    </div>
+                  )}
+                  
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          📝 Account Name
+                          📝 Account Name <span className="text-red-500">*</span>
+                          <span className="text-xs text-gray-500 ml-1">({formData.name.length}/100)</span>
                         </label>
                         <input
                           type="text"
                           required
+                          maxLength={100}
                           value={formData.name}
                           onChange={(e) => setFormData({...formData, name: e.target.value})}
                           className="w-full p-2 border border-gray-300 rounded-lg"
@@ -211,11 +254,13 @@ export default function Accounts() {
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          🏷️ Account Type
+                          🏷️ Account Type <span className="text-red-500">*</span>
+                          <span className="text-xs text-gray-500 ml-1">({formData.type.length}/50)</span>
                         </label>
                         <input
                           type="text"
                           required
+                          maxLength={50}
                           value={formData.type}
                           onChange={(e) => setFormData({...formData, type: e.target.value})}
                           className="w-full p-2 border border-gray-300 rounded-lg"
@@ -224,12 +269,13 @@ export default function Accounts() {
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          💰 Budget Planned
+                          💰 Budget Planned <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="number"
                           required
                           step="0.01"
+                          min="0"
                           value={formData.budget}
                           onChange={(e) => setFormData({...formData, budget: e.target.value})}
                           className="w-full p-2 border border-gray-300 rounded-lg"

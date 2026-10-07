@@ -3,7 +3,7 @@
  * Defines which modules are available for each customer package tier
  */
 
-export type CustomerPackage = 'FOUNDATION' | 'STRUCTURE' | 'LANDMARK'
+export type CustomerPackage = 'DEMO' | 'FOUNDATION' | 'STRUCTURE' | 'LANDMARK'
 
 export interface PackageModules {
   foundation: string[]
@@ -15,6 +15,19 @@ export interface PackageModules {
  * Module definitions for each package
  */
 export const PACKAGE_MODULES: Record<CustomerPackage, string[]> = {
+  DEMO: [
+    // Demo gets same access as Foundation (valid for 30 days)
+    'Dashboard',
+    'Transactions',
+    'Attendance',
+    'Payroll',
+    'Reports',
+    'Accounts',
+    'Categories',
+    'Employees',
+    'Partners',
+    'Users',
+  ],
   FOUNDATION: [
     // Core Features
     'Dashboard',
@@ -69,6 +82,7 @@ export const PACKAGE_MODULES: Record<CustomerPackage, string[]> = {
  * Detailed package descriptions
  */
 export const PACKAGE_DESCRIPTIONS: Record<CustomerPackage, string> = {
+  DEMO: '30-day demo trial with full access',
   FOUNDATION: 'Dashboard, Transactions, Attendance, Payroll, Reports, Masters (Accounts, Categories, Employees & Partners, Users)',
   STRUCTURE: 'Foundation + Bills & Invoices, Import Data',
   LANDMARK: 'Structure + BOQ and upcoming modules',
@@ -77,8 +91,14 @@ export const PACKAGE_DESCRIPTIONS: Record<CustomerPackage, string> = {
 /**
  * Check if a module is available in a package
  */
-export function hasModuleAccess(packageName: CustomerPackage, moduleName: string): boolean {
+export function hasModuleAccess(packageName: CustomerPackage | null | undefined, moduleName: string): boolean {
+  if (!packageName) {
+    return false
+  }
   const modules = PACKAGE_MODULES[packageName]
+  if (!modules) {
+    return false
+  }
   return modules.includes(moduleName)
 }
 
@@ -94,6 +114,7 @@ export function getPackageModules(packageName: CustomerPackage): string[] {
  */
 export function getPackageTierLevel(packageName: CustomerPackage): number {
   const tiers: Record<CustomerPackage, number> = {
+    DEMO: 0,
     FOUNDATION: 1,
     STRUCTURE: 2,
     LANDMARK: 3,
@@ -106,6 +127,7 @@ export function getPackageTierLevel(packageName: CustomerPackage): number {
  */
 export function getPackageBadgeColor(packageName: CustomerPackage): string {
   const colors: Record<CustomerPackage, string> = {
+    DEMO: 'bg-yellow-100 text-yellow-800',
     FOUNDATION: 'bg-blue-100 text-blue-800',
     STRUCTURE: 'bg-green-100 text-green-800',
     LANDMARK: 'bg-purple-100 text-purple-800',
@@ -118,6 +140,7 @@ export function getPackageBadgeColor(packageName: CustomerPackage): string {
  */
 export function getSuggestedUpgrades(currentPackage: CustomerPackage): CustomerPackage[] {
   const upgrades: Record<CustomerPackage, CustomerPackage[]> = {
+    DEMO: ['FOUNDATION', 'STRUCTURE', 'LANDMARK'],
     FOUNDATION: ['STRUCTURE', 'LANDMARK'],
     STRUCTURE: ['LANDMARK'],
     LANDMARK: [],
