@@ -11,6 +11,7 @@ interface Account {
   id: number;
   name: string;
   siteId?: number | null;
+  projectStatus?: string | null;
 }
 
 interface Category {
