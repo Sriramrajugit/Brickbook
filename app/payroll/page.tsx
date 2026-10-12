@@ -321,6 +321,7 @@ export default function Payroll() {
         const payrollRes = await fetch('/api/payroll', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify(payrollPayload),
         });
 
@@ -349,16 +350,27 @@ export default function Payroll() {
 
         // Step 2: Create transaction entry only if there's a net balance to pay
         if (netBalance > 0) {
+          // Format date range for description (DD/MM - DD/MM)
+          const startDateObj = new Date(startDate);
+          const endDateObj = new Date(endDate);
+          const formatDate = (date: Date) => {
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            return `${day}/${month}`;
+          };
+          const dateRange = `${formatDate(startDateObj)} - ${formatDate(endDateObj)}`;
+          
           const transactionRes = await fetch('/api/transactions', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify({
               amount: netBalance,
-              description: `Salary for ${record.employeeName}`,
+              description: `Salary for ${record.employeeName} (${dateRange})`,
               category: 'Salary',
               type: 'Cash-Out',
-              paymentMode: 'Bank Transfer',
-              date: endDate, // Use end date of payroll period
+              paymentMode: 'G-Pay',
+              date: new Date().toISOString().split('T')[0], // Use today's date (current system date)
               accountId: accountId,
             }),
           });

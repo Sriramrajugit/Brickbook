@@ -268,7 +268,7 @@ export default function Transactions() {
         
         if (transaction.category === 'Salary Advance') {
           // For Salary Advance, also fetch advance records
-          const advancesRes = await fetch('/api/advances');
+          const advancesRes = await fetch('/api/advances', { credentials: 'include' });
           if (advancesRes.ok) {
             const advancesData = await advancesRes.json();
             
@@ -382,6 +382,7 @@ export default function Transactions() {
               await fetch('/api/advances', {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({ id: matchingAdvance.id }),
               });
             }
@@ -481,7 +482,7 @@ export default function Transactions() {
       // Handle Advance record updates/creation for Salary Advance
       if ((data.category === 'Salary Advance' || data.category === 'Salary') && selectedEmployee) {
         try {
-          const advancesRes = await fetch('/api/advances');
+          const advancesRes = await fetch('/api/advances', { credentials: 'include' });
           if (advancesRes.ok) {
             const advancesData = await advancesRes.json();
             
@@ -501,6 +502,7 @@ export default function Transactions() {
                   await fetch('/api/advances', {
                     method: 'DELETE',
                     headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
                     body: JSON.stringify({ id: oldAdvance.id }),
                   });
                 } catch (delErr) {
@@ -512,6 +514,7 @@ export default function Transactions() {
               await fetch('/api/advances', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({
                   employeeId: parseInt(selectedEmployee),
                   amount: parseFloat(data.amount as string),
@@ -524,6 +527,7 @@ export default function Transactions() {
               await fetch('/api/advances', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({
                   employeeId: parseInt(selectedEmployee),
                   amount: parseFloat(data.amount as string),

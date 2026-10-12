@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
     })
 
     // For each employee, calculate payroll data
-    const payrollPreview = await Promise.all(
+    const payrollPreviewWithNulls = await Promise.all(
       employees.map(async (emp: any) => {
         // Fetch attendance records
         const attendance = await prisma.attendance.findMany({
@@ -49,17 +49,22 @@ export async function GET(request: NextRequest) {
           },
         })
 
+        // For Daily Wage employees: Skip if no attendance records for this period
+        if ((emp.salaryFrequency === 'D' || emp.salaryFrequency === 'Daily') && attendance.length === 0) {
+          return null
+        }
+
         // Calculate gross salary based on salary frequency
         let grossSalary = 0
         
         if (emp.salaryFrequency === 'D' || emp.salaryFrequency === 'Daily') {
-          // Daily Employee: Salary based on attendance (no of days * daily rate + OT)
+          // Daily Employee: Salary based on attendance (no of days * daily rate)
           const dailySalary = emp.salary || 0
           grossSalary = attendance.reduce((sum: number, record: any) => {
             return sum + (dailySalary * record.status)
           }, 0)
         } else {
-          // Monthly Employee: Fixed monthly salary
+          // Monthly Employee: Fixed monthly salary (no attendance needed)
           grossSalary = emp.salary || 0
         }
 
@@ -97,6 +102,9 @@ export async function GET(request: NextRequest) {
         }
       })
     )
+
+    // Filter out null entries (only Daily wage employees with no attendance are filtered)
+    const payrollPreview = payrollPreviewWithNulls.filter(emp => emp !== null)
 
     return NextResponse.json(payrollPreview)
   } catch (error) {
