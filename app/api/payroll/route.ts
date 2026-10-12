@@ -157,8 +157,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const fromDateObj = new Date(fromDate);
-    const toDateObj = new Date(toDate);
+    const fromDateObj = new Date(`${fromDate}T00:00:00Z`);
+    const toDateObj = new Date(`${toDate}T23:59:59Z`);
 
     // Check if payroll already exists for this employee in OVERLAPPING date ranges
     // Two ranges overlap if: range1.start <= range2.end AND range1.end >= range2.start

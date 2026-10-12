@@ -23,12 +23,12 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Parse dates to normalize them (remove time component)
-    const startDate = new Date(fromDate);
-    startDate.setUTCHours(0, 0, 0, 0);
-    
-    const endDate = new Date(toDate);
-    endDate.setUTCHours(23, 59, 59, 999);
+    // Parse dates to normalize them to midnight UTC
+    // Input format from frontend: "2024-01-15" (ISO date string)
+    const startDate = new Date(`${fromDate}T00:00:00Z`);
+    const endDate = new Date(`${toDate}T23:59:59Z`);
+
+    console.log('🔍 Checking paid employees for date range:', { fromDate, toDate, startDate, endDate });
 
     // Fetch employees who already have payroll for OVERLAPPING date ranges
     // Date ranges overlap if: queryStart <= existingEnd AND queryEnd >= existingStart
@@ -40,9 +40,13 @@ export async function GET(request: NextRequest) {
       },
       select: {
         employeeId: true,
+        fromDate: true,
+        toDate: true,
       },
       distinct: ['employeeId'],
-    })
+    });
+
+    console.log('✅ Found paid payrolls:', paidPayrolls);
 
     return NextResponse.json(paidPayrolls)
   } catch (error) {
